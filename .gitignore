@@ -1,0 +1,11 @@
+data/
+functional\ roi\ activity/
+glia\ activity/
+max\ proj\ roi\ activity/
+neuropil\ activity/
+.spyproject/
+*.csv
+*.xlsx
+*.jasp
+*.pzfx
+*.png
