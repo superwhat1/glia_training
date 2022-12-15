@@ -11,7 +11,7 @@ import numpy as np
 from statistics import stdev
 
 
-def find_peaks_in_data(data, threshold_start_multiplier, threshold_end_multiplier, percentile):
+def find_peaks_in_data(data, downsampled, threshold_start_multiplier, threshold_end_multiplier, percentile):
     
     peaks = [[] for i in range(len(data))]
 
@@ -23,6 +23,8 @@ def find_peaks_in_data(data, threshold_start_multiplier, threshold_end_multiplie
     
     start_of_window = -1
     end_of_window = -1
+    
+    ''' convert function to scan over downsampled data to find response windows then pull responses from raw'''
     
     for row_index, row in enumerate(data):
         
@@ -81,6 +83,37 @@ def read_in_csv(file):
 
     return data
 
+
+def downsample(data: list, taper_edge: bool = True) -> list:
+    """
+    Returns a downsampled trace from 'data', tapering the edges of 'taper_edge' is True.
+
+    Parameters
+    ----------
+    data: cells, f_intensity
+        The fluorescence intensity traces of the recorded active cells to downsample
+    taper_edge: bool
+        Whether to taper the edges
+
+    Returns
+    -------
+    F_down:
+        The downsampled fluorenscence traces
+   """
+    cells, f_intensity = data.shape
+
+    #create array that has m = cell rows and n = time/2 columns.
+    F_down = np.zeros((cells, int(np.ceil(f_intensity / 2))), 'float32')
+    
+    #create the downsampled array by taking the mean of a list made of the first and the second number in the row then repeat until the end of the row is reached.
+    F_down[:, :f_intensity//2] = np.mean([data[:, 0:-1:2], data[:, 1::2]], axis=0)
+    
+    #check to see if the length of the rows are even, if not devide the last value in the row by 2 if taper_edge = True
+    if f_intensity % 2 == 1:
+        F_down[:, -1] = data[:, -1] / 2 if taper_edge else data[:, -1]
+
+
+    return F_down()
 
 
 def output_new_csv(area, peaks, times, file):
@@ -144,6 +177,8 @@ def main(threshold_start_multiplier, threshold_end_multiplier, percnetile):
     file = "C:/Users/BioCraze/Documents/Ruthazer lab/glial training/cumulated_neuropil.csv"
     
     data = read_in_csv(file)
+    
+    downsampled =downsample(data)
     
     area, peaks, times = find_peaks_in_data(data, threshold_start_multiplier, threshold_end_multiplier, percentile)
 
