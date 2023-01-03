@@ -4,8 +4,6 @@ import csv
 
 from sklearn.metrics import auc
 
-import pandas as pd
-
 import numpy as np
 
 from statistics import stdev
@@ -21,12 +19,12 @@ def find_peaks_in_data(data, downsampled, threshold_start_multiplier, threshold_
 
     search_extension = 50
     
-    start_of_window = -1
-    end_of_window = -1
+    start_of_window_d = -1
+    end_of_window_d = -1
     
     ''' convert function to scan over downsampled data to find response windows then pull responses from raw'''
     
-    for row_index, row in enumerate(data):
+    for row_index, row in enumerate(downsampled):
         
         baseline = np.percentile(row, percentile)
         standard_dev = stdev(row)
@@ -35,22 +33,25 @@ def find_peaks_in_data(data, downsampled, threshold_start_multiplier, threshold_
         
         for value_index, value in enumerate(row):
 
-            if start_of_window == -1: # If we don't have a starting point yet
+            if start_of_window_d == -1: # If we don't have a starting point yet
 
                 if value >= threshold_to_start:
                     print(value_index)
                     print(threshold_to_start)
                     print(value)
-                    start_of_window = row.index(min(row[value_index - search_extension:value_index])) if value_index > search_extension else row.index(min(row[:value_index+1]))
+                    start_of_window_d = row.index(min(row[value_index - search_extension:value_index])) if value_index > search_extension else row.index(min(row[:value_index+1]))
 
-            elif end_of_window == -1: # We have a starting point, now we're looking for the end of our window
+            elif end_of_window_d == -1: # We have a starting point, now we're looking for the end of our window
 
                 if value <= threshold_to_end:
 
-                    end_of_window = row.index(min(row[value_index:value_index + search_extension])) if value_index < len(row) - search_extension else row.index(min(row[value_index-1:]))
+                    end_of_window_d = row.index(min(row[value_index:value_index + search_extension])) if value_index < len(row) - search_extension else row.index(min(row[value_index-1:]))
 
             else: # We have a start and an end - find the max in this range
-
+                
+                start_of_window = start_of_window_d * 2
+                end_of_window = end_of_window_d * 2
+                
                 if len(data[row_index][start_of_window:end_of_window]) > 1:
 
                     peaks[row_index].append(max(data[row_index][start_of_window:end_of_window]))
@@ -59,9 +60,9 @@ def find_peaks_in_data(data, downsampled, threshold_start_multiplier, threshold_
                 
                     times[row_index].append(data[row_index].index(max(data[row_index][start_of_window:end_of_window])) + 1)
 
-                start_of_window = -1
+                start_of_window_d = -1
 
-                end_of_window = -1
+                end_of_window_d = -1
 
     return area, peaks, times
 
@@ -180,7 +181,7 @@ def main(threshold_start_multiplier, threshold_end_multiplier, percnetile):
     
     downsampled =downsample(data)
     
-    area, peaks, times = find_peaks_in_data(data, threshold_start_multiplier, threshold_end_multiplier, percentile)
+    area, peaks, times = find_peaks_in_data(data,downsampled, threshold_start_multiplier, threshold_end_multiplier, percentile)
 
     output_new_csv(area, peaks, times, file)
 
