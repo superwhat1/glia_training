@@ -6,10 +6,11 @@ from sklearn.metrics import auc
 
 import numpy as np
 
-from statistics import stdev
+import statistics
 
+import scipy.ndimage as sn
 
-def find_peaks_in_data(data, downsampled, threshold_start_multiplier, threshold_end_multiplier, percentile):
+def find_peaks_in_data(data, downsampled, threshold_multiplier):
     
     peaks = [[] for i in range(len(data))]
 
@@ -17,40 +18,35 @@ def find_peaks_in_data(data, downsampled, threshold_start_multiplier, threshold_
 
     area = [[] for i in range(len(data))]
 
-    search_extension = 50
+    #search_extension = 50
     
-    start_of_window_d = -1
-    end_of_window_d = -1
+    start_of_window = -1
+    end_of_window = -1
     
-    ''' convert function to scan over downsampled data to find response windows then pull responses from raw'''
+    ''' scan over downsampled data to find response windows then pull responses from raw data'''
     
     for row_index, row in enumerate(downsampled):
-        
-        baseline = np.percentile(row, percentile)
-        standard_dev = stdev(row)
-        threshold_to_start = baseline + standard_dev * threshold_start_multiplier
-        threshold_to_end = baseline + standard_dev * threshold_end_multiplier
-        
+
+        threshold_to_start = (threshold_multiplier * statistics.stdev(row)) + statistics.mean(row)
+        threshold_to_end = (threshold_multiplier * statistics.stdev(row)) + statistics.mean(row)
+        print(threshold_to_start)
         for value_index, value in enumerate(row):
 
-            if start_of_window_d == -1: # If we don't have a starting point yet
+            if start_of_window == -1: # If we don't have a starting point yet
 
                 if value >= threshold_to_start:
-                    print(value_index)
-                    print(threshold_to_start)
-                    print(value)
-                    start_of_window_d = row.index(min(row[value_index - search_extension:value_index])) if value_index > search_extension else row.index(min(row[:value_index+1]))
+                    
+                    start_of_window = value_index
+                    #start_of_window_d = row.index(min(row[value_index - search_extension:value_index])) if value_index > search_extension else row.index(min(row[:value_index+1]))
 
-            elif end_of_window_d == -1: # We have a starting point, now we're looking for the end of our window
+            elif end_of_window == -1: # We have a starting point, now we're looking for the end of our window
 
                 if value <= threshold_to_end:
-
-                    end_of_window_d = row.index(min(row[value_index:value_index + search_extension])) if value_index < len(row) - search_extension else row.index(min(row[value_index-1:]))
+                    
+                    end_of_window = value_index
+                    #end_of_window_d = row.index(min(row[value_index:value_index + search_extension])) if value_index < len(row) - search_extension else row.index(min(row[value_index-1:]))
 
             else: # We have a start and an end - find the max in this range
-                
-                start_of_window = start_of_window_d * 2
-                end_of_window = end_of_window_d * 2
                 
                 if len(data[row_index][start_of_window:end_of_window]) > 1:
 
@@ -60,10 +56,9 @@ def find_peaks_in_data(data, downsampled, threshold_start_multiplier, threshold_
                 
                     times[row_index].append(data[row_index].index(max(data[row_index][start_of_window:end_of_window])) + 1)
 
-                start_of_window_d = -1
+                start_of_window = -1
 
-                end_of_window_d = -1
-
+                end_of_window = -1
     return area, peaks, times
 
 
@@ -85,7 +80,7 @@ def read_in_csv(file):
     return data
 
 
-def downsample(data: list, taper_edge: bool = True) -> list:
+def downsample(data: list, taper_edge: bool = False) -> list:
     """
     Returns a downsampled trace from 'data', tapering the edges of 'taper_edge' is True.
 
@@ -101,20 +96,12 @@ def downsample(data: list, taper_edge: bool = True) -> list:
     F_down:
         The downsampled fluorenscence traces
    """
-    cells, f_intensity = data.shape
+    nd_data = np.array(data)
 
     #create array that has m = cell rows and n = time/2 columns.
-    F_down = np.zeros((cells, int(np.ceil(f_intensity / 2))), 'float32')
-    
-    #create the downsampled array by taking the mean of a list made of the first and the second number in the row then repeat until the end of the row is reached.
-    F_down[:, :f_intensity//2] = np.mean([data[:, 0:-1:2], data[:, 1::2]], axis=0)
-    
-    #check to see if the length of the rows are even, if not devide the last value in the row by 2 if taper_edge = True
-    if f_intensity % 2 == 1:
-        F_down[:, -1] = data[:, -1] / 2 if taper_edge else data[:, -1]
-
-
-    return F_down()
+    F_down = sn.gaussian_filter1d(nd_data, 5)
+        
+    return F_down.tolist()
 
 
 def output_new_csv(area, peaks, times, file):
@@ -141,8 +128,8 @@ def output_new_csv(area, peaks, times, file):
 
         os.makedirs('data-peaks/')
         
-
-    with open('data-peaks/' + file[file.find("A"):-7] + '_AREA.csv', 'w', newline='') as fn:
+    print(file)
+    with open('data-peaks/' + file[file.find("A"):file.find(".csv")] + '_AREA.csv', 'w', newline='') as fn:
 
         writer = csv.writer(fn)
 
@@ -151,7 +138,7 @@ def output_new_csv(area, peaks, times, file):
             writer.writerows([row])
 
 
-    with open('data-peaks/' + file[file.find("A"):-7] + '_PEAKS.csv', 'w', newline='') as fn:
+    with open('data-peaks/' + file[file.find("A"):file.find(".csv")] + '_PEAKS.csv', 'w', newline='') as fn:
 
         writer = csv.writer(fn)
 
@@ -161,7 +148,7 @@ def output_new_csv(area, peaks, times, file):
 
 
 
-    with open('data-peaks/' + file[file.find("A"):-7] + '_TIMES.csv', 'w', newline='') as fn:
+    with open('data-peaks/' + file[file.find("A"):file.find(".csv")] + '_TIMES.csv', 'w', newline='') as fn:
 
         writer = csv.writer(fn)
 
@@ -170,24 +157,21 @@ def output_new_csv(area, peaks, times, file):
             writer.writerows([row])
 
 
-def main(threshold_start_multiplier, threshold_end_multiplier, percnetile):
+def main(threshold_multiplier):
 
-#    files = [i for i in os.listdir() if i.endswith('.csv')]
-#    for file in files:
-
-    file = "C:/Users/BioCraze/Documents/Ruthazer lab/glial training/cumulated_neuropil.csv"
+    files = [i for i in os.listdir() if i.endswith('df.csv')]
+    for file in files:
     
-    data = read_in_csv(file)
+        data = read_in_csv(file)
     
-    downsampled =downsample(data)
-    
-    area, peaks, times = find_peaks_in_data(data,downsampled, threshold_start_multiplier, threshold_end_multiplier, percentile)
+        downsampled =downsample(data)
 
-    output_new_csv(area, peaks, times, file)
+        area, peaks, times = find_peaks_in_data(data,downsampled, threshold_multiplier)
 
+        output_new_csv(area, peaks, times, file)
 
 #Set change in fluorescence threshold to use for identifying responses.
 
-threshold_start_multiplier = 2; threshold_end_multiplier = 2; percentile = 7.5
+threshold_multiplier = 2
 
-main(threshold_start_multiplier, threshold_end_multiplier, percentile)
+main(threshold_multiplier)

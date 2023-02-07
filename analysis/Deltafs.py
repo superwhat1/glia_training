@@ -109,13 +109,13 @@ def do_math(data, percentiles):
 def output_new_csv(Fo, data, file):
       
     print("writing")
-    if not os.path.exists(file+'deltaF/'):
+    if not os.path.exists(file[:file.rfind("A")]+'deltaF/'):
 
-        os.makedirs(file+'deltaF/')
+        os.makedirs(file[:file.rfind("A")]+'deltaF/')
 
 
 
-    with open(file + 'deltaF/' + file[file.find("A"):-4] + '_df.csv', 'w', newline='') as fn:
+    with open(file[:file.rfind("A")] + 'deltaF/' + file[file.find("A"):-4] + '_df.csv', 'w', newline='') as fn:
 
         writer = csv.writer(fn)
 
@@ -123,7 +123,7 @@ def output_new_csv(Fo, data, file):
             writer.writerows([row])
             
             
-    with open(file + 'deltaF/' + file[file.find("A"):-4] + '_Fo.csv', 'w', newline='') as fn:
+    with open(file[:file.rfind("A")] + 'deltaF/' + file[file.find("A"):-4] + '_Fo.csv', 'w', newline='') as fn:
 
         writer = csv.writer(fn)
         
@@ -133,9 +133,10 @@ def output_new_csv(Fo, data, file):
 
 def main():
 
-    files = [i.path for i in os.scandir("C:/Users/BioCraze/Documents/Ruthazer lab/glial training/analysis/max proj roi activity/") if i.path.endswith('.csv')]
+    files = [i.path for i in os.scandir("C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/analysis/glia activity/") if i.path.endswith('.csv')]
 
     for file in files:
+        
         data = read_in_csv(file)
         
         percentiles = calculate_percentiles(data)

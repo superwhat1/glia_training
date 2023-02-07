@@ -4,52 +4,6 @@ import csv
 
 from sklearn.metrics import auc
 
-from statistics import stdev
-
-
-
-def find_peaks_in_data(data, z_scores, threshold_to_start, threshold_to_end):
-
-
-
-    peaks = [[] for i in range(len(data))]
-
-    times = [[] for i in range(len(data))]
-
-    area = [[] for i in range(len(data))]
-
-    windows = [540,
-               1450,
-               2360,
-               3270,
-               4180]
-
-
-
-    for row_index, row in enumerate(z_scores):
-
-        for window in windows:
-            if window - 250 < 0:
-                left = 0
-                right =window + 250
-            elif window + 250 > 4500:
-                left = window - 250
-                right = 4500
-            else:
-                left = window - 250
-                right = window + 250
-            
-            area[row_index].append(auc(list(range(left, right)), list(data[row_index][left:right])))
-
-            peaks[row_index].append(max(data[row_index][left:right]))
-
-            times[row_index].append(data[row_index].index(max(data[row_index][left:right])) + 1)
-            
-
-
-    return area, peaks, times
-
-
 
 def read_in_csv(file):
 
@@ -69,32 +23,28 @@ def read_in_csv(file):
 
 
 
-
 def output_new_csv(area, peaks, times, file):
-
     
     for index, row in enumerate(area):
 
         row.insert(0, f"trace_{index+1}")
         
-
+        
     for index, row in enumerate(peaks):
 
         row.insert(0, f"trace_{index+1}")
-
-
+        
 
     for index, row in enumerate(times):
 
         row.insert(0, f"trace_{index+1}")
-
-
+        
 
     if not os.path.exists('data-peaks/'):
 
         os.makedirs('data-peaks/')
         
-
+        
     with open('data-peaks/' + file[file.find("A"):-7] + '_AREA.csv', 'w', newline='') as fn:
 
         writer = csv.writer(fn)
@@ -113,7 +63,6 @@ def output_new_csv(area, peaks, times, file):
             writer.writerows([row])
 
 
-
     with open('data-peaks/' + file[file.find("A"):-7] + '_TIMES.csv', 'w', newline='') as fn:
 
         writer = csv.writer(fn)
@@ -121,34 +70,48 @@ def output_new_csv(area, peaks, times, file):
         for row in times:
 
             writer.writerows([row])
+            
+            
+            
+def find_peaks_in_data(data):
 
 
+    peaks = [[] for i in range(len(data))]
 
-def calculate_standard_deviations(data):
+    times = [[] for i in range(len(data))]
 
-    standard_deviations = []
+    area = [[] for i in range(len(data))]
 
-    for row in data:
+    windows = [540,
+               1450,
+               2360,
+               3270,
+               4180]
 
-        standard_deviations.append(stdev(row))
-
-    return standard_deviations
-
-
-
-def create_z_score_matrix(data, standard_deviations):
-
-    z_score_matrix = [[] for i in range(len(data))]
 
     for row_index, row in enumerate(data):
 
-        for value_index, value in enumerate(row):
+        for window in windows:
+            if window - 250 < 0:
+                left = 0
+                right =window + 250
+            elif window + 250 > 4500:
+                left = window - 250
+                right = 4500
+            else:
+                left = window - 250
+                right = window + 250
+            
+            area[row_index].append(auc(list(range(left, right)), list(data[row_index][left:right])))
 
-            z_score_matrix[row_index].append(value / standard_deviations[row_index])
+            peaks[row_index].append(max(data[row_index][left:right]))
 
-    return z_score_matrix
+            times[row_index].append(data[row_index].index(max(data[row_index][left:right])) + 1)
+            
 
+    return area, peaks, times     
 
+       
 
 def main(threshold_to_start, threshold_to_end):
 
@@ -159,11 +122,7 @@ def main(threshold_to_start, threshold_to_end):
     
     data = read_in_csv(file)
 
-    standard_deviations = calculate_standard_deviations(data)
-
-    z_scores = create_z_score_matrix(data, standard_deviations)
-
-    area, peaks, times = find_peaks_in_data(data, z_scores, threshold_to_start, threshold_to_end)
+    area, peaks, times = find_peaks_in_data(data)
 
     output_new_csv(area, peaks, times, file)
 
@@ -171,12 +130,4 @@ def main(threshold_to_start, threshold_to_end):
 
 if __name__ == "__main__":
 
-
-
-    threshold_to_start = 2
-
-    threshold_to_end = 2
-
-
-
-    main(threshold_to_start, threshold_to_end)
+    main()
