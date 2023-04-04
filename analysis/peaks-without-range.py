@@ -130,7 +130,7 @@ def output_new_csv(area, peaks, times, file):
         os.makedirs('data-peaks/')
         
     print(file)
-    with open('data-peaks/' + file[file.find("A"):file.find(".csv")] + '_AREA.csv', 'w', newline='') as fn:
+    with open('data-peaks/' + file[file.find("F/")+2:-4] + '_AREA.csv', 'w', newline='') as fn:
 
         writer = csv.writer(fn)
 
@@ -139,7 +139,7 @@ def output_new_csv(area, peaks, times, file):
             writer.writerows([row])
 
 
-    with open('data-peaks/' + file[file.find("A"):file.find(".csv")] + '_PEAKS.csv', 'w', newline='') as fn:
+    with open('data-peaks/' + file[file.find("F/")+2:-4] + '_PEAKS.csv', 'w', newline='') as fn:
 
         writer = csv.writer(fn)
 
@@ -149,7 +149,7 @@ def output_new_csv(area, peaks, times, file):
 
 
 
-    with open('data-peaks/' + file[file.find("A"):file.find(".csv")] + '_TIMES.csv', 'w', newline='') as fn:
+    with open('data-peaks/' + file[file.find("F/")+2:-4] + '_TIMES.csv', 'w', newline='') as fn:
 
         writer = csv.writer(fn)
 
