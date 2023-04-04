@@ -10,7 +10,7 @@ import statistics
 
 import scipy.ndimage as sn
 
-def find_peaks_in_data(data, downsampled, threshold_multiplier):
+def find_peaks_in_data(data, blurred, threshold_multiplier):
     
     peaks = [[] for i in range(len(data))]
 
@@ -23,9 +23,9 @@ def find_peaks_in_data(data, downsampled, threshold_multiplier):
     start_of_window = -1
     end_of_window = -1
     
-    ''' scan over downsampled data to find response windows then pull responses from raw data'''
+    ''' scan over gaussian blurred data to find response windows then pull responses from raw data'''
     
-    for row_index, row in enumerate(downsampled):
+    for row_index, row in enumerate(blurred):
 
         threshold_to_start = (threshold_multiplier * statistics.stdev(row)) + statistics.mean(row)
         threshold_to_end = (threshold_multiplier * statistics.stdev(row)) + statistics.mean(row)
@@ -80,28 +80,29 @@ def read_in_csv(file):
     return data
 
 
-def downsample(data: list, taper_edge: bool = False) -> list:
+def blur(data: list, sigma: int) -> list:
     """
-    Returns a downsampled trace from 'data', tapering the edges of 'taper_edge' is True.
+    Returns a blurred trace from 'data'.
 
     Parameters
     ----------
     data: cells, f_intensity
-        The fluorescence intensity traces of the recorded active cells to downsample
-    taper_edge: bool
-        Whether to taper the edges
+        The fluorescence intensity traces of the recorded active cells to blur
+        
+    sigma: scalar or sequence of scalars
+        Standard deviation for Gaussian kernel. The standard deviations of the Gaussian filter are given for each axis as a sequence, or as a single number, in which case it is equal for all axes.
 
     Returns
     -------
-    F_down:
-        The downsampled fluorenscence traces
+    F_blur:
+        The blurred fluorenscence traces
    """
     nd_data = np.array(data)
 
     #create array that has m = cell rows and n = time/2 columns.
-    F_down = sn.gaussian_filter1d(nd_data, 5)
+    F_blur = sn.gaussian_filter1d(nd_data, sigma=sigma)
         
-    return F_down.tolist()
+    return F_blur.tolist()
 
 
 def output_new_csv(area, peaks, times, file):
@@ -129,7 +130,7 @@ def output_new_csv(area, peaks, times, file):
         os.makedirs('data-peaks/')
         
     print(file)
-    with open('data-peaks/' + file[file.find("A"):file.find(".csv")] + '_AREA.csv', 'w', newline='') as fn:
+    with open('data-peaks/' + file[file.find("F/")+2:-4] + '_AREA.csv', 'w', newline='') as fn:
 
         writer = csv.writer(fn)
 
@@ -138,7 +139,7 @@ def output_new_csv(area, peaks, times, file):
             writer.writerows([row])
 
 
-    with open('data-peaks/' + file[file.find("A"):file.find(".csv")] + '_PEAKS.csv', 'w', newline='') as fn:
+    with open('data-peaks/' + file[file.find("F/")+2:-4] + '_PEAKS.csv', 'w', newline='') as fn:
 
         writer = csv.writer(fn)
 
@@ -148,7 +149,7 @@ def output_new_csv(area, peaks, times, file):
 
 
 
-    with open('data-peaks/' + file[file.find("A"):file.find(".csv")] + '_TIMES.csv', 'w', newline='') as fn:
+    with open('data-peaks/' + file[file.find("F/")+2:-4] + '_TIMES.csv', 'w', newline='') as fn:
 
         writer = csv.writer(fn)
 
@@ -164,14 +165,15 @@ def main(threshold_multiplier):
     
         data = read_in_csv(file)
     
-        downsampled =downsample(data)
+        blurred =blur(data, sigma)
 
-        area, peaks, times = find_peaks_in_data(data,downsampled, threshold_multiplier)
+        area, peaks, times = find_peaks_in_data(data, blurred, threshold_multiplier)
 
         output_new_csv(area, peaks, times, file)
 
 #Set change in fluorescence threshold to use for identifying responses.
-
 threshold_multiplier = 2
+#Set amount to blur
+sigma = 5
 
 main(threshold_multiplier)
