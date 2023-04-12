@@ -10,7 +10,7 @@ import os
 import pandas as pd
 
 #files = [i for i in os.listdir("C:/Users/BioCraze/Documents/Ruthazer lab/glial training/scripts/data/data-peaks/") if i.endswith('neuropil.csv')]
-rootdir = 'C:\\Users\\BioCraze\\Documents\\Ruthazer lab\\glial training\\analysis\\neuropil activity'
+rootdir = 'E:\\glia training\\neuropil_notraining'
 
 files =[f.path for f in os.scandir(rootdir) if f.path.endswith('.csv')]
 
@@ -18,14 +18,13 @@ cumulative = []
 for file in files:
     df = pd.read_csv(file)
     data = df["Mean"]
-    data.transpose
-    ready = pd.concat([pd.Series(file),data])
-    cumulative.append(list(ready))
-
-        
-new_csv = open("C:/Users/BioCraze/Documents/Ruthazer lab/glial training/cumulated_neuropil.csv",'w',newline='')
-write_to = csv.writer(new_csv)
-for row in cumulative:
-    write_to.writerows([row])
-
-new_csv.close()
+    data_list = data.to_list()
+    #ready = pd.concat([pd.Series(file), data])
+    #cumulative.append(list(ready))
+    new_csv = open("E:\\glia training\\neuropil_notraining\\transposed\\" + file[file.find("A"):-4] + ".csv",'w',newline='')
+    write_to = csv.writer(new_csv)
+    write_to.writerow(data_list)
+    new_csv.close()
+#for row in cumulative:
+#    write_to.writerows([row])
+#new_csv.close()
