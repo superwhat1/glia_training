@@ -37,7 +37,6 @@ def calculate_percentiles(data, percentile=7.5):
     window_size = 150
     
 
-
     percentiles = [[] for i in range(len(data[0:]))]
 
     for cell, frames in enumerate(data): # One column at a time
@@ -76,7 +75,7 @@ def calculate_percentiles(data, percentile=7.5):
 
 
 
-def do_math(data, percentiles):
+def deltaF(data, percentiles):
 
     Fo_stdev = []
     deltaf = []
@@ -84,18 +83,15 @@ def do_math(data, percentiles):
     count=0
 
     for cell, frames in enumerate(data):
-        Fo = []
         count+=1
         new_column = []
 
         for frame, value in enumerate(frames):
 
             try:
-                Fo.append(percentiles[cell][frame])
                 new_column.append((float(value) - percentiles[cell][frame]) / float(percentiles[cell][frame]))
 
             except IndexError:
-                Fo.append(percentiles[cell][frame-1])
                 new_column.append((float(value) - percentiles[cell][frame-1]) / float(percentiles[cell][frame-1]))
         
         Fo_stdev.append([ f"trace_{count}",(1.5 * statistics.stdev(percentiles[cell])) / statistics.mean(percentiles[cell])]) #append the delta F/Fo of the 1.5*STDEV of Fo 
@@ -109,13 +105,13 @@ def do_math(data, percentiles):
 def output_new_csv(Fo, data, file):
       
     print("writing")
-    if not os.path.exists(file[:file.rfind("L/")+2]+'deltaF/'):
+    if not os.path.exists(file[:file.rfind("/")+1]+'deltaF/'):
 
-        os.makedirs(file[:file.rfind("L/")+2]+'deltaF/')
+        os.makedirs(file[:file.rfind("/")+1]+'deltaF/')
 
 
 
-    with open(file[:file.rfind("L/")+2] + 'deltaF/' + file[file.find("L/")+2:-4] + '_df.csv', 'w', newline='') as fn:
+    with open(file[:file.rfind("/")+1] + 'deltaF/' + file[file.rfind("g/")+2:-4] + '_df.csv', 'w', newline='') as fn:
 
         writer = csv.writer(fn)
 
@@ -123,7 +119,7 @@ def output_new_csv(Fo, data, file):
             writer.writerows([row])
             
             
-    with open(file[:file.rfind("L/")+2] + 'deltaF/' + file[file.find("L/")+2:-4] + '_Fo.csv', 'w', newline='') as fn:
+    with open(file[:file.rfind("/")+1] + 'deltaF/' + file[file.rfind("g/")+2:-4] + '_Fo.csv', 'w', newline='') as fn:
 
         writer = csv.writer(fn)
         
@@ -133,7 +129,7 @@ def output_new_csv(Fo, data, file):
 
 def main():
 
-    files = [i.path for i in os.scandir("C:/Users/David/Documents/Ruthazer lab/SOUL/") if i.path.endswith('.csv')]
+    files = [i.path for i in os.scandir("E:/glia training/neuron_notraining/") if i.path.endswith('.csv')]
 
     for file in files:
         
@@ -141,7 +137,7 @@ def main():
         
         percentiles = calculate_percentiles(data)
         
-        Fo_temp, deltaf = do_math(data, percentiles)
+        Fo_temp, deltaf = deltaF(data, percentiles)
 
         output_new_csv(Fo_temp, deltaf, file)
 

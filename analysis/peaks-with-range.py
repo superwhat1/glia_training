@@ -23,7 +23,7 @@ def read_in_csv(file):
 
 
 
-def output_new_csv(area, peaks, times, file):
+def output_new_csv(area, peaks, times, threshold, file):
     
     for index, row in enumerate(area):
 
@@ -39,13 +39,17 @@ def output_new_csv(area, peaks, times, file):
 
         row.insert(0, f"trace_{index+1}")
         
+    for index, row in enumerate(threshold):
+
+        row.insert(0, f"trace_{index+1}")
+            
 
     if not os.path.exists('data-peaks/'):
 
         os.makedirs('data-peaks/')
         
         
-    with open('data-peaks/' + file[file.find("A"):-7] + '_AREA.csv', 'w', newline='') as fn:
+    with open('data-peaks/' + file[file.find("A"):-4] + '_AREA.csv', 'w', newline='') as fn:
 
         writer = csv.writer(fn)
 
@@ -54,7 +58,7 @@ def output_new_csv(area, peaks, times, file):
             writer.writerows([row])
 
 
-    with open('data-peaks/' + file[file.find("A"):-7] + '_PEAKS.csv', 'w', newline='') as fn:
+    with open('data-peaks/' + file[file.find("A"):-4] + '_PEAKS.csv', 'w', newline='') as fn:
 
         writer = csv.writer(fn)
 
@@ -63,7 +67,7 @@ def output_new_csv(area, peaks, times, file):
             writer.writerows([row])
 
 
-    with open('data-peaks/' + file[file.find("A"):-7] + '_TIMES.csv', 'w', newline='') as fn:
+    with open('data-peaks/' + file[file.find("A"):-4] + '_TIMES.csv', 'w', newline='') as fn:
 
         writer = csv.writer(fn)
 
@@ -71,6 +75,13 @@ def output_new_csv(area, peaks, times, file):
 
             writer.writerows([row])
             
+    with open('data-peaks/' + file[file.find("A"):-4] + '_THRESHOLD.csv', 'w', newline='') as fn:
+
+        writer = csv.writer(fn)
+
+        for row in threshold:
+
+            writer.writerows([row])
             
             
 def find_peaks_in_data(data):
@@ -81,17 +92,15 @@ def find_peaks_in_data(data):
     times = [[] for i in range(len(data))]
 
     area = [[] for i in range(len(data))]
+    
+    threshold = [[] for i in range(len(data))]
 
-    windows = [540,
-               1450,
-               2360,
-               3270,
-               4180]
+    first_stim = 380
 
 
     for row_index, row in enumerate(data):
-
-        for window in windows:
+        for i in range(5):
+            window = first_stim + i*915
             if window - 250 < 0:
                 left = 0
                 right =window + 250
@@ -108,23 +117,24 @@ def find_peaks_in_data(data):
 
             times[row_index].append(data[row_index].index(max(data[row_index][left:right])) + 1)
             
+            threshold[row_index].append(max(data[row_index][right:right+150]))
 
-    return area, peaks, times     
+    return area, peaks, times, threshold
 
        
 
-def main(threshold_to_start, threshold_to_end):
+def main():
 
 #    files = [i for i in os.listdir() if i.endswith('.csv')]
 #    for file in files:
 
-    file = "C:/Users/BioCraze/Documents/Ruthazer lab/glial training/analysis/max proj roi activity/deltaF/A2_min80_27apr22_processed_is_cell_traces_df.csv"
+    file = "E:/glia training/neuron_notraining/deltaF/A1_cap_notraining_min100_30mar23_neuron_traces_df.csv"
     
     data = read_in_csv(file)
 
-    area, peaks, times = find_peaks_in_data(data)
+    area, peaks, times, threshold = find_peaks_in_data(data)
 
-    output_new_csv(area, peaks, times, file)
+    output_new_csv(area, peaks, times, threshold, file)
 
 
 
