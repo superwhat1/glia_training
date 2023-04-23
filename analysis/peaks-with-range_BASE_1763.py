@@ -95,13 +95,7 @@ def find_peaks_in_data(data):
     
     threshold = [[] for i in range(len(data))]
 
-<<<<<<< HEAD
-    first_stim = 550
-=======
-    responses = [[] for i in range(len(data))]
-    
     first_stim = 380
->>>>>>> 566c85f61996ba43dacd37f246857dc82bbad997
 
 
     for row_index, row in enumerate(data):
@@ -109,26 +103,22 @@ def find_peaks_in_data(data):
             window = first_stim + i*915
             if window - 250 < 0:
                 left = 0
-                right =window + 500 - first_stim
+                right =window + 250
             elif window + 250 > 4500:
-                left = window - 500 + (4500 - window)
+                left = window - 250
                 right = 4500
             else:
                 left = window - 250
                 right = window + 250
             
             area[row_index].append(auc(list(range(left, right)), list(data[row_index][left:right])))
-            
-            responses[row_index].append(data[row_index][left:right])
-            
+
             peaks[row_index].append(max(data[row_index][left:right]))
 
             times[row_index].append(data[row_index].index(max(data[row_index][left:right])) + 1)
-            try:
-                threshold[row_index].append(max(data[row_index][left-100:left]))
-            except:
-                threshold[row_index].append(max(data[row_index][right:right+100]))
-                
+            
+            threshold[row_index].append(max(data[row_index][right:right+150]))
+
     return area, peaks, times, threshold
 
        
@@ -138,7 +128,7 @@ def main():
 #    files = [i for i in os.listdir() if i.endswith('.csv')]
 #    for file in files:
 
-    file = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/analysis/max proj roi activity/deltaF/A2_min100_27apr22_processed_is_cell_traces_df.csv"
+    file = "E:/glia training/neuron_notraining/deltaF/A1_cap_notraining_min100_30mar23_neuron_traces_df.csv"
     
     data = read_in_csv(file)
 
