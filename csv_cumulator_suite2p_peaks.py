@@ -8,7 +8,7 @@ Created on Wed Jul 13 19:35:50 2022
 import csv
 import os
 
-files = [i.path for i in os.scandir("C:/Users/David/Documents/Ruthazer lab/SOUL/deltaF/") if i.path.endswith('df.csv')]
+files = [i.path for i in os.scandir("E:/glia training/neuron_notraining/deltaF/data-peaks/") if i.path.endswith('THRESHOLD.csv')]
 
 cumulative = []
 for file in files:
@@ -19,7 +19,7 @@ for file in files:
         cumulative.append(row)
 
         
-new_csv = open("C:/Users/David/Documents/Ruthazer lab/SOUL/cumulated_glia_SOUL.csv",'w',newline='')
+new_csv = open("E:/glia training/cumulated_cap_notraining_neuron_threshold.csv",'w',newline='')
 write_to = csv.writer(new_csv)
 for row in cumulative:
     write_to.writerows([row])

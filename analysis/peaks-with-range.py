@@ -95,6 +95,8 @@ def find_peaks_in_data(data):
     
     threshold = [[] for i in range(len(data))]
 
+    responses = [[] for i in range(len(data))]
+    
     first_stim = 380
 
 
@@ -112,7 +114,9 @@ def find_peaks_in_data(data):
                 right = window + 250
             
             area[row_index].append(auc(list(range(left, right)), list(data[row_index][left:right])))
-
+            
+            responses[row_index].append(data[row_index][left:right])
+            
             peaks[row_index].append(max(data[row_index][left:right]))
 
             times[row_index].append(data[row_index].index(max(data[row_index][left:right])) + 1)
