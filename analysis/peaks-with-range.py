@@ -42,7 +42,7 @@ def output_new_csv(area, peaks, times, threshold, file):
     for index, row in enumerate(threshold):
 
         row.insert(0, f"trace_{index+1}")
-            
+        
 
     if not os.path.exists('data-peaks/'):
 
@@ -82,8 +82,16 @@ def output_new_csv(area, peaks, times, threshold, file):
         for row in threshold:
 
             writer.writerows([row])
-            
-            
+    
+    with open('data-peaks/' + file[file.find("A"):-4] + '_RESPONSES.csv', 'w', newline='') as fn:
+
+        writer = csv.writer(fn)
+
+        for row in threshold:
+
+            writer.writerows([row])
+
+
 def find_peaks_in_data(data):
 
 
@@ -95,16 +103,16 @@ def find_peaks_in_data(data):
     
     threshold = [[] for i in range(len(data))]
 
-<<<<<<< HEAD
-    first_stim = 550
-=======
     responses = [[] for i in range(len(data))]
     
+    a=0
+    
     first_stim = 380
->>>>>>> 566c85f61996ba43dacd37f246857dc82bbad997
+    
 
-
+    
     for row_index, row in enumerate(data):
+        a+=1
         for i in range(5):
             window = first_stim + i*915
             if window - 250 < 0:
@@ -119,7 +127,9 @@ def find_peaks_in_data(data):
             
             area[row_index].append(auc(list(range(left, right)), list(data[row_index][left:right])))
             
-            responses[row_index].append(data[row_index][left:right])
+            trace = [f"trace_{a}", f"stim{i}"]
+            response = data[row_index][left:right]
+            responses.append(trace + response)
             
             peaks[row_index].append(max(data[row_index][left:right]))
 
@@ -129,7 +139,7 @@ def find_peaks_in_data(data):
             except:
                 threshold[row_index].append(max(data[row_index][right:right+100]))
                 
-    return area, peaks, times, threshold
+    return area, peaks, times, threshold, responses
 
        
 
@@ -142,9 +152,9 @@ def main():
     
     data = read_in_csv(file)
 
-    area, peaks, times, threshold = find_peaks_in_data(data)
+    area, peaks, times, threshold, responses = find_peaks_in_data(data)
 
-    output_new_csv(area, peaks, times, threshold, file)
+    output_new_csv(area, peaks, times, threshold, responses, file)
 
 
 
