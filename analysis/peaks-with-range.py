@@ -4,6 +4,7 @@ import csv
 
 from sklearn.metrics import auc
 
+import numpy as np
 
 def read_in_csv(file):
 
@@ -77,11 +78,7 @@ def output_new_csv(area, peaks, times, threshold, file):
             
     with open('data-peaks/' + file[file.find("A"):-4] + '_THRESHOLD.csv', 'w', newline='') as fn:
 
-        writer = csv.writer(fn)
-
-        for row in threshold:
-
-            writer.writerows([row])
+        np.save(fn, threshold, allow_pickle=True)
             
             
 def find_peaks_in_data(data):
@@ -95,13 +92,9 @@ def find_peaks_in_data(data):
     
     threshold = [[] for i in range(len(data))]
 
-<<<<<<< HEAD
-    first_stim = 550
-=======
     responses = [[] for i in range(len(data))]
     
     first_stim = 380
->>>>>>> 566c85f61996ba43dacd37f246857dc82bbad997
 
 
     for row_index, row in enumerate(data):

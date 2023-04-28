@@ -6,49 +6,46 @@ Created on Thu Apr 20 14:59:31 2023
 """
 
 import numpy as np
-import csv
 import matplotlib.pyplot as plt
+import pandas as pd
+import glob
+import os
 
-data = []
+def data_loader(exp_file): #response arrays should have a shape of cells*stims*time
+    files =[f.path[:f.path.rfind('\\')+1] for i in glob.glob(f'{exp_file}/*/**/',recursive=True) for f in os.scandir(i) if f.path.endswith('.npy')]
 
-reader = csv.reader(open("C:/Users/David/Documents/Ruthazer lab/glia_training/analysis/neuropil_raw_traces.csv"))
+    db = {}
+    for file in files:
+        db[file[file.rfind("A"-1):-4]] = np.load(file, allow_pickle=True)
 
-for row in reader:
+    return db
 
-    float_row = [float(numeric_string) for numeric_string in row]
+def roll_and_average(data): 
 
-    data.append(float_row)
-    
+    target_idx = int(np.floor(data.shape[-1]/2))
+
+    rolled = np.zeros(np.shape(data))
+
+    for session, responses in enumerate(data):
+        for response, time in enumerate(responses):
+            rolled[session,response] = np.roll(time, target_idx - np.argmax(time))   
             
+    meaned = np.mean(rolled,axis=0)
+    return rolled, meaned
 
-responses = [[] for i in range(len(data))]
+def plot_averaged(meaned):
 
-first_stim = 380
+    for i in range(meaned.shape[0]):
+        plt.plot(meaned[i,:])
 
-
-for row_index, row in enumerate(data):
-    for i in range(5):
-        window = first_stim + i*915
-        if window - 250 < 0:
-            left = 0
-            right =window + 250
-        elif window + 250 > 4500:
-            left = window - 250
-            right = 4500
-        else:
-            left = window - 250
-            right = window + 250
-            
-        responses[row_index].append(data[row_index][left:right])
-
-a_responses = np.array(responses)
-
-target_idx = 250
+    plt.show()
 
 
-for sessions, responses in enumerate(a_responses[:3]):
-    for response, time in enumerate(responses):
-        plt.plot(np.roll(time, target_idx - np.argmax(time)))      
-plt.show()
+db = a_loader("C:/Users/David/Documents/Ruthazer lab/glia_training/analysis/")
+data = db[]
+rolled, meaned = roll_and_average(data)
+plot_averaged(meaned)
+
+
 
 
