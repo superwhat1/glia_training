@@ -43,7 +43,7 @@ def output_new_csv(area, peaks, times, threshold, file):
     for index, row in enumerate(threshold):
 
         row.insert(0, f"trace_{index+1}")
-            
+        
 
     if not os.path.exists('data-peaks/'):
 
@@ -78,9 +78,27 @@ def output_new_csv(area, peaks, times, threshold, file):
             
     with open('data-peaks/' + file[file.find("A"):-4] + '_THRESHOLD.csv', 'w', newline='') as fn:
 
+
         np.save(fn, threshold, allow_pickle=True)
-            
-            
+       
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
 def find_peaks_in_data(data):
 
 
@@ -94,10 +112,18 @@ def find_peaks_in_data(data):
 
     responses = [[] for i in range(len(data))]
     
+    a=0
+    
     first_stim = 380
 
 
+
+    
+
+
+  
     for row_index, row in enumerate(data):
+        a+=1
         for i in range(5):
             window = first_stim + i*915
             if window - 250 < 0:
@@ -111,18 +137,17 @@ def find_peaks_in_data(data):
                 right = window + 250
             
             area[row_index].append(auc(list(range(left, right)), list(data[row_index][left:right])))
-            
-            responses[row_index].append(data[row_index][left:right])
-            
-            peaks[row_index].append(max(data[row_index][left:right]))
 
+            responses[row_index].append(data[row_index][left:right])            
+            peaks[row_index].append(max(data[row_index][left:right)
             times[row_index].append(data[row_index].index(max(data[row_index][left:right])) + 1)
             try:
                 threshold[row_index].append(max(data[row_index][left-100:left]))
             except:
                 threshold[row_index].append(max(data[row_index][right:right+100]))
-                
-    return area, peaks, times, threshold
+
+    return area, peaks, times, threshold, responses
+
 
        
 
@@ -135,9 +160,9 @@ def main():
     
     data = read_in_csv(file)
 
-    area, peaks, times, threshold = find_peaks_in_data(data)
+    area, peaks, times, threshold, responses = find_peaks_in_data(data)
 
-    output_new_csv(area, peaks, times, threshold, file)
+    output_new_csv(area, peaks, times, threshold, responses, file)
 
 
 
