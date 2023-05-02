@@ -78,10 +78,27 @@ def output_new_csv(area, peaks, times, threshold, file):
             
     with open('data-peaks/' + file[file.find("A"):-4] + '_THRESHOLD.csv', 'w', newline='') as fn:
 
-
+<<<<<<< HEAD
         np.save(fn, threshold, allow_pickle=True)
-       
+            
+            
+=======
+        writer = csv.writer(fn)
 
+        for row in threshold:
+
+            writer.writerows([row])
+    
+    with open('data-peaks/' + file[file.find("A"):-4] + '_RESPONSES.csv', 'w', newline='') as fn:
+
+        writer = csv.writer(fn)
+
+        for row in threshold:
+
+            writer.writerows([row])
+
+
+>>>>>>> 7a534907bf3c7d215ec6715ac88228364651f4cf
 def find_peaks_in_data(data):
 
 
@@ -98,8 +115,13 @@ def find_peaks_in_data(data):
     a=0
     
     first_stim = 380
+<<<<<<< HEAD
 
-  
+=======
+    
+>>>>>>> 7a534907bf3c7d215ec6715ac88228364651f4cf
+
+    
     for row_index, row in enumerate(data):
         a+=1
         for i in range(5):
@@ -115,17 +137,20 @@ def find_peaks_in_data(data):
                 right = window + 250
             
             area[row_index].append(auc(list(range(left, right)), list(data[row_index][left:right])))
+            
+            trace = [f"trace_{a}", f"stim{i}"]
+            response = data[row_index][left:right]
+            responses.append(trace + response)
+            
+            peaks[row_index].append(max(data[row_index][left:right]))
 
-            responses[row_index].append(data[row_index][left:right])            
-            peaks[row_index].append(max(data[row_index][left:right)
             times[row_index].append(data[row_index].index(max(data[row_index][left:right])) + 1)
             try:
                 threshold[row_index].append(max(data[row_index][left-100:left]))
             except:
                 threshold[row_index].append(max(data[row_index][right:right+100]))
-
+                
     return area, peaks, times, threshold, responses
-
 
        
 
