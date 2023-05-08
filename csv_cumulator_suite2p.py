@@ -11,7 +11,7 @@ import os
 
 
 
-files = [i.path for i in os.scandir("E:/glia training/neuron_notraining/deltaF/data-peaks/") if i.path.endswith('THRESHOLD.csv')]
+files = [i.path for i in os.scandir("C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/analysis/data-peaks/") if i.path.endswith('PEAKS.csv')]
 
 
 
@@ -27,7 +27,7 @@ for file in files:
 
 
 
-new_csv = open("E:/glia training/cumulated_cap_notraining_neuron_threshold.csv",'w',newline='')
+new_csv = open("C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/analysis/neuropil activity/cumulated_neuropil_peaks.csv",'w',newline='')
 
 write_to = csv.writer(new_csv)
 for row in cumulative:

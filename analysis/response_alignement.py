@@ -12,11 +12,12 @@ import glob
 import os
 
 def data_loader(exp_file): #response arrays should have a shape of cells*stims*time
-    files =[f.path[:f.path.rfind('\\')+1] for i in glob.glob(f'{exp_file}/*/**/',recursive=True) for f in os.scandir(i) if f.path.endswith('.npy')]
+    files =[f.path for i in glob.glob(f'{exp_file}/*/', recursive=True) for f in os.scandir(i) if f.path.endswith('.npy')]
 
     db = {}
     for file in files:
-        db[file[file.rfind("A"-1):-4]] = np.load(file, allow_pickle=True)
+        print(file[file.rfind("A"):-4])
+        db[file[file.rfind("A"):-4]] = np.load(file, allow_pickle=True)
 
     return db
 
@@ -35,17 +36,14 @@ def roll_and_average(data):
 
 def plot_averaged(meaned):
 
-    for i in range(meaned.shape[0]):
-        plt.plot(meaned[i,:])
+    plt.plot(meaned)
 
     plt.show()
 
 
-db = a_loader("C:/Users/David/Documents/Ruthazer lab/glia_training/analysis/")
-data = db[]
+file = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/analysis/neuropil activity/"
+db = data_loader(file)
+data = db['A2_min100_27apr22_df_RESPONSES']
 rolled, meaned = roll_and_average(data)
-plot_averaged(meaned)
-
-
-
-
+write()
+#plot_averaged(meaned)
