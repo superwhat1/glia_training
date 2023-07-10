@@ -12,11 +12,11 @@ def read_in_csv(file):
 
     df = pd.read_csv(file, header = None)
     data = df.iloc[:,0].tolist()
-            
+        
     return data
 
 
-def output_new_csv(area, peaks, times, threshold, responses, meaned, file):
+def output_new_csv(area, peaks, times, threshold, responses, file):
         
 
     if not os.path.exists('data-peaks/'):
@@ -51,30 +51,16 @@ def output_new_csv(area, peaks, times, threshold, responses, meaned, file):
     
     with open('data-peaks/' + file[file.find("A"):-4] + '_RESPONSES.npy', 'wb') as fn:
         np.save(fn, np.array(responses), allow_pickle=True)
-            
-    with open('data-peaks/' + file[file.find("A"):-4] + "_ROLLEDandMEANED.csv", 'w', newline = '') as fn:
-        
-        writer = csv.writer(fn)
-        
-        writer.writerow(meaned)
-            
+    
             
 def roll_and_average(data): 
     
-    data = np.array(data)
+    data = np.array(data)       
+    meaned = np.mean(data,axis=0).tolist()
     
-    target_idx = int(np.floor(data.shape[-1]/2))
+    return meaned
 
-    rolled = np.zeros(np.shape(data))
-
-    for session, responses in enumerate(data):
-        for response, time in enumerate(responses):
-            rolled[session,response] = np.roll(time, target_idx - np.argmax(time))   
-            
-    meaned = np.mean(rolled,axis=0).tolist()
-    return rolled, meaned
-
-def find_peaks_in_data(data):
+def find_peaks_in_data(data, stims, animal):
 
 
     peaks = []
@@ -89,7 +75,7 @@ def find_peaks_in_data(data):
     
     a=0
     
-    first_stim = 120
+    first_stim = stims.at[animal, "first stim"]
     
     a+=1
     for i in range(5):
@@ -122,18 +108,25 @@ def find_peaks_in_data(data):
 
 def main():
 
-#    files = [i for i in os.listdir() if i.endswith('.csv')]
-#    for file in files:
-
-    file = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/analysis/neuropil activity/deltaF/A2_min100_27apr22_df.csv"
+    stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/summaries/stim_timings.csv"
+    stims = pd.read_csv(stims_timings)
+    stims = stims.set_index("file")
     
-    data = read_in_csv(file)
-
-    area, peaks, times, threshold, responses = find_peaks_in_data(data)
-
-    rolled, meaned = roll_and_average(responses)
+    exp_fold = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/analysis/neuropil activity/deltaF/"
     
-    output_new_csv(area, peaks, times, threshold, responses, meaned, file)
+    files = [i.path for i in os.scandir(exp_fold) if i.path.endswith('df.csv')]
+
+    for file in files:
+        animal = file[file.rfind("A"):file.rfind("neu")-1]
+        
+        data = read_in_csv(file)
+        try:
+            area, peaks, times, threshold, responses = find_peaks_in_data(data, stims, animal)
+        
+            output_new_csv(area, peaks, times, threshold, responses, file)
+      
+        except KeyError:
+            pass
 
 
 
