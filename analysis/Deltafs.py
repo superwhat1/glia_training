@@ -8,11 +8,11 @@ import statistics
 
 import pandas as pd
 
-def read_in_csv(file):
-        
-    df = pd.read_csv(file)
-    data = df["Mean"]
-    data_list = data.to_list()
+def read_in_csv(file, tectal_area):
+    if tectal_area == "neuropil":
+        df = pd.read_csv(file)
+        data = df["Mean"]
+        data_list = data.to_list()
             
     return data_list
 
@@ -125,10 +125,12 @@ def output_new_csv(Fo, data, file):
 def main():
 
     files = [i.path for i in os.scandir("C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/analysis/neuropil activity/") if i.path.endswith('.csv')]
-
+    
+    tectal_area = "neuropil"
+    
     for file in files:
         
-        data = read_in_csv(file)
+        data = read_in_csv(file, tectal_area)
         
         percentiles = calculate_percentiles(data)
         
