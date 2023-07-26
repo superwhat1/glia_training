@@ -24,14 +24,8 @@ def read_in_csv(file):
 
     return data
 
-def roll_and_average(data): 
-    
-    data = np.array(data)   
-            
-    meaned = np.mean(data,axis=0).tolist()
-    return  meaned
 
-def output_new_csv(area, peaks, times, threshold, responses, meaned, file):
+def output_new_csv(area, peaks, times, thresholds, responses, file):
     if len(area) > 0: 
         for index, row in enumerate(area):
     
@@ -47,7 +41,7 @@ def output_new_csv(area, peaks, times, threshold, responses, meaned, file):
     
             row.insert(0, f"trace_{index+1}")
             
-        for index, row in enumerate(threshold):
+        for index, row in enumerate(thresholds):
     
             row.insert(0, f"trace_{index+1}")
             
@@ -87,7 +81,7 @@ def output_new_csv(area, peaks, times, threshold, responses, meaned, file):
             
             writer = csv.writer(fn)
     
-            for row in threshold:
+            for row in thresholds:
     
                 writer.writerows([row])
                 
@@ -95,11 +89,6 @@ def output_new_csv(area, peaks, times, threshold, responses, meaned, file):
             
             np.save(fn, np.array(responses), allow_pickle=True)
                 
-        with open('data-peaks/' + file[file.find("A"):-4] + "_ROLLEDandMEANED.csv", 'w', newline = '') as fn:
-            
-            writer = csv.writer(fn)
-            for row in meaned:
-                writer.writerow(row)
 
 
 def find_peaks_in_data(data, stims, animal):
@@ -111,9 +100,9 @@ def find_peaks_in_data(data, stims, animal):
 
     area = [[] for i in range(len(data))]
     
-    threshold = [[] for i in range(len(data))]
-
     responses = [[] for i in range(len(data))]
+    
+    thresholds = [[] for i in range(len(data))]
     
     a=0
     
@@ -149,11 +138,11 @@ def find_peaks_in_data(data, stims, animal):
             
             times[row_index].append(data[row_index].index(max(data[row_index][left:right])) + 1)
             try:
-                threshold[row_index].append(max(data[row_index][left-100:left]))
+                thresholds[row_index].append(max(data[row_index][left-100:left]))
             except:
-                threshold[row_index].append(max(data[row_index][right:right+100]))
+                thresholds[row_index].append(max(data[row_index][right:right+100]))
 
-    return area, peaks, times, threshold, responses
+    return area, peaks, times, thresholds, responses
 
 
 def main():
@@ -169,16 +158,13 @@ def main():
         animal = file[file.rfind("A"):file.rfind("neu")-1]
         data = read_in_csv(file)
         try:
-            area, peaks, times, threshold, responses = find_peaks_in_data(data, stims, animal)
-    
-            meaned = roll_and_average(responses)
+            area, peaks, times, thresholds, responses = find_peaks_in_data(data, stims, animal)
         
-            output_new_csv(area, peaks, times, threshold, responses, meaned, file)
+            output_new_csv(area, peaks, times, thresholds, responses, file)
+            
         except KeyError:
             print(file)
             pass
 
-
-if __name__ == "__main__":
-
-    main()
+#Run script
+main()

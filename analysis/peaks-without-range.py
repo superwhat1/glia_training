@@ -17,6 +17,10 @@ def find_peaks_in_data(data, blurred, threshold_multiplier):
     times = [[] for i in range(len(data))]
 
     area = [[] for i in range(len(data))]
+    
+    responses = [[] for i in range(len(data))]
+    
+    thresholds = [[] for i in range(len(data))]
 
     #search_extension = 50
     
@@ -55,11 +59,18 @@ def find_peaks_in_data(data, blurred, threshold_multiplier):
                     area[row_index].append(auc(list(range(start_of_window, end_of_window)), list(data[row_index][start_of_window:end_of_window])))
                 
                     times[row_index].append(data[row_index].index(max(data[row_index][start_of_window:end_of_window])) + 1)
+                    
+                    responses[row_index].append(data[row_index][start_of_window:end_of_window])
+                    
+                    try:
+                        thresholds.append(max(data[row_index][start_of_window-100:start_of_window]))
+                    except:
+                        thresholds.append(max(data[row_index][end_of_window:end_of_window+100]))
 
                 start_of_window = -1
 
                 end_of_window = -1
-    return area, peaks, times
+    return area, peaks, times, responses, thresholds
 
 
 
@@ -105,7 +116,7 @@ def blur(data: list, sigma: int) -> list:
     return F_blur.tolist()
 
 
-def output_new_csv(area, peaks, times, file):
+def output_new_csv(area, peaks, times, responses, thresholds, file):
 
 
     for index, row in enumerate(area):
@@ -118,18 +129,21 @@ def output_new_csv(area, peaks, times, file):
         row.insert(0, f"trace_{index+1}")
 
 
-
     for index, row in enumerate(times):
 
         row.insert(0, f"trace_{index+1}")
+        
 
-
+    for index, row in enumerate(thresholds):
+    
+        row.insert(0, f"trace_{index+1}")
+        
 
     if not os.path.exists('data-peaks/'):
 
         os.makedirs('data-peaks/')
-        
-    print(file)
+    
+
     with open('data-peaks/' + file[file.find("F/")+2:-4] + '_AREA.csv', 'w', newline='') as fn:
 
         writer = csv.writer(fn)
@@ -148,7 +162,6 @@ def output_new_csv(area, peaks, times, file):
             writer.writerows([row])
 
 
-
     with open('data-peaks/' + file[file.find("F/")+2:-4] + '_TIMES.csv', 'w', newline='') as fn:
 
         writer = csv.writer(fn)
@@ -156,6 +169,20 @@ def output_new_csv(area, peaks, times, file):
         for row in times:
 
             writer.writerows([row])
+
+
+    with open('data-peaks/' + file[file.find("A"):-4] + '_THRESHOLD.csv', 'w', newline='') as fn:
+        
+        writer = csv.writer(fn)
+
+        for row in thresholds:
+
+            writer.writerows([row])
+            
+            
+    with open('data-peaks/' + file[file.find("A"):-4] + '_RESPONSES.npy', 'wb') as fn:
+        
+        np.save(fn, np.array(responses), allow_pickle=True)
 
 
 def main(threshold_multiplier):
@@ -167,9 +194,9 @@ def main(threshold_multiplier):
     
         blurred =blur(data, sigma)
 
-        area, peaks, times = find_peaks_in_data(data, blurred, threshold_multiplier)
+        area, peaks, times, responses, thresholds = find_peaks_in_data(data, blurred, threshold_multiplier)
 
-        output_new_csv(area, peaks, times, file)
+        output_new_csv(area, peaks, times,responses, thresholds, file)
 
 #Set change in fluorescence threshold to use for identifying responses.
 threshold_multiplier = 2

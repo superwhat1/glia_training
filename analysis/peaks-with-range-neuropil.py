@@ -60,7 +60,7 @@ def roll_and_average(data):
     
     return meaned
 
-def find_peaks_in_data(data, stims, animal):
+def find_peaks_in_data(data, stim_times, animal):
 
 
     peaks = []
@@ -75,7 +75,7 @@ def find_peaks_in_data(data, stims, animal):
     
     a=0
     
-    first_stim = stims.at[animal, "first stim"]
+    first_stim = stim_times.at[animal, "first stim"]
     
     a+=1
     for i in range(5):
@@ -108,8 +108,8 @@ def find_peaks_in_data(data, stims, animal):
 
 def main():
 
-    stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/summaries/stim_timings.csv"
-    stims = pd.read_csv(stims_timings)
+    stim_times = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/summaries/stim_timings.csv"
+    stims = pd.read_csv(stim_times)
     stims = stims.set_index("file")
     
     exp_fold = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/analysis/neuropil activity/deltaF/"
