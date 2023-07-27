@@ -6,9 +6,9 @@ Created on Wed Jul 26 15:15:43 2023
 """
 import numpy as np
 import pandas as pd
-import os, glob, statistics, csv
+import os, glob, statistics, csv, re
 from sklearn.metrics import auc
-
+import matplotlib.pyplot as plt
 
 def is_cell_responsive(f):
     
@@ -84,7 +84,7 @@ def deltaF(data, percentiles):
     return Fo_stdev, deltaf
     
     
-def find_peaks_in_data(data, stims, animal):
+def find_peaks_in_data(data, stims, recording_name):
 
 
     peaks = [[] for i in range(len(data))]
@@ -99,7 +99,7 @@ def find_peaks_in_data(data, stims, animal):
     
     a=0
     
-    first_stim = stims.at[animal, "first stim"]
+    first_stim = stims.at[recording_name, "first stim"]
 
   
     for row_index, row in enumerate(data):
@@ -226,11 +226,99 @@ def output_csv(Fo, data, area, peaks, times, thresholds, responses, file):
             np.save(fn, np.array(responses), allow_pickle=True)
                 
 
+def thresh_filter_responses(resp_db, thresh_db): #response arrays should have a shape of cells*stims*time
+            
+    #remove cell responses where the max is less than the threshold        
+    for k, v in resp_db.items():
+        for w, x in enumerate(v):
+            for y, z in enumerate(x):
+                if z.max() < thresh_db[k][w][y]:
+                    resp_db[k][w][y] *= np.nan
+                    
+    fltrd_resp_db = resp_db
+    return fltrd_resp_db
+
+
+def mean_stack(stacked): 
+            
+    meaned = np.nanmean(stacked, axis=0, dtype = np.float64)
+    return  meaned
+
+'''
+def plot_averaged(meaned, title):
+    
+    plt.figure(figsize=(20,6))
+    position = 150
+    for i in meaned:
+        position+=1
+        plt.subplot(position)
+        plt.suptitle(title)
+        plt.ylim(0,1.5)
+        plt.plot(i)
+    plt.show()
+'''
+
+def group_by_treatment(treatments, fltrd_resp_db):
+    grouped_by_treatment ={}
+    for key, values in treatments.items():
+        grouped_by_treatment[key] ={}
+        for value in values:
+            kl=[]
+            vl=[]
+            for k, v in fltrd_resp_db.items():
+                if value in k:
+                    kl.append(k)
+                    vl.append(v)
+            kv = dict(zip(kl,vl))
+            grouped_by_treatment[key][value] = kv
+    return grouped_by_treatment  
+
+
+#Set parameters and run code
+def plot_averaged(grouped_by_treatment, time_list):
+    
+    base_min = {}
+    base_max = {}
+    ready_to_plot = {}
+    for i in time_list:
+        ready_to_plot[i]={}
+        for treatment, animals in grouped_by_treatment.items():
+            if treatment != "cap_notrain":
+                to_stack = []
+                for animal, times in animals.items():    
+                    for time, cells in times.items():
+                        for traces in cells:
+                            if i in time:
+                                to_stack.append(traces)
+                                
+                stacked = np.stack(to_stack)
+                meaned = mean_stack(stacked)
+                meaned_again = mean_stack(meaned)
+                if i == 'min15':
+                    base_min[treatment] = meaned_again.min()
+                    base_max[treatment] = meaned_again.max()
+                normalized = (meaned_again - base_min[treatment])/ (base_max[treatment] - base_min[treatment])
+                ready_to_plot[i][treatment]=normalized
+                
+                title = treatment + i
+                plt.title(title)
+                plt.plot(normalized)
+                plt.ylim(0,1.5)
+        
+        plt.show()
+
 
 
 def main():
     rootdir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\training_19may23'
     files =[f.path[:f.path.rfind('\\')+1] for i in glob.glob(f'{rootdir}/*/**/***/',recursive=True) for f in os.scandir(i) if f.path.endswith('iscell.npy')]
+    
+    stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/summaries/stim_timings.csv"
+    stims = pd.read_csv(stims_timings)
+    stims = stims.set_index("file")     
+    
+    resp_db = {}
+    thresh_db = {}
     
     for file in files:
         #perform deltaF operation
@@ -239,16 +327,28 @@ def main():
         Fo_temp, deltaf = deltaF(raw_trace, percentiles)
             
         #perform response metric operations
-        stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/summaries/stim_timings.csv"
-        stims = pd.read_csv(stims_timings)
-        stims = stims.set_index("file")        
+        recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group() #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
         
-        animal = file[file.rfind("A"):file.rfind("neu")-1]
         try:
-            area, peaks, times, thresholds, responses = find_peaks_in_data(deltaF, stims, animal)
+            area, peaks, times, thresholds, responses = find_peaks_in_data(deltaF, stims, recording_name)
             
         except KeyError:
             print(file)
             pass
         
         output_csv(Fo_temp, deltaf, area, peaks, times, thresholds, responses, file)
+        
+        resp_db[recording_name] = responses
+        thresh_db[recording_name] = thresholds
+        
+    #Prepare variables needed to plot average traces
+    treatments = {"cap_and_train": ["21sep22", "22jun22", "26may22", "13aug22"], "cap_notrain": ["01apr23", "02feb23", "30mar23"],
+    "nocap_train": ["07sep22", "15jun22", "20jul22", "27apr22"]}
+    time_list=['min15', 'min45', 'min60', 'min80', 'min100']
+    
+    fltrd_resp_db = thresh_filter_responses(resp_db, thresh_db)
+    grouped_by_treatment = group_by_treatment(treatments, fltrd_resp_db)
+    
+    plot_averaged(grouped_by_treatment, time_list)
+    
+main()
