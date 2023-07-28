@@ -101,7 +101,7 @@ def find_peaks_in_data(data, stims, recording_name):
     
     first_stim = stims.at[recording_name, "first stim"]
 
-  
+
     for row_index, row in enumerate(data):
         a+=1
         for i in range(5):
@@ -139,24 +139,24 @@ def find_peaks_in_data(data, stims, recording_name):
     
     
     
-def output_csv(Fo, data, area, peaks, times, thresholds, responses, file):
+def output_csv(Fo, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name):
       
     print("writing")
-    if not os.path.exists(file[:file.rfind("/")+1]+'deltaF/'):
+    if not os.path.exists(output_dir + '/deltaF/'):
 
-        os.makedirs(file[:file.rfind("/")+1]+'deltaF/')
+        os.makedirs(output_dir + '/deltaF/')
 
 
 
-    with open(file[:file.rfind("/")+1] + 'deltaF/' + file[file.rfind("/A")+1:-4] + '_df.csv', 'w', newline='') as fn:
+    with open(output_dir + '/deltaF/' + recording_name + '_df.csv', 'w', newline='') as fn:
 
         writer = csv.writer(fn)
 
-        for row in data:
+        for row in deltaf:
             writer.writerows([row])
             
             
-    with open(file[:file.rfind("/")+1] + 'deltaF/' + file[file.rfind("/A")+1:-4] + '_Fo.csv', 'w', newline='') as fn:
+    with open(output_dir + '/deltaF/' + recording_name + '_Fo.csv', 'w', newline='') as fn:
 
         writer = csv.writer(fn)
         
@@ -182,12 +182,12 @@ def output_csv(Fo, data, area, peaks, times, thresholds, responses, file):
             row.insert(0, f"trace_{index+1}")
             
             
-        if not os.path.exists('data-peaks/'):
+        if not os.path.exists(output_dir + '/data-peaks/'):
     
-            os.makedirs('data-peaks/')
+            os.makedirs(output_dir + '/data-peaks/')
             
             
-        with open('data-peaks/' + file[file.find("A"):-4] + '_AREA.csv', 'w', newline='') as fn:
+        with open(output_dir + '/data-peaks/' + recording_name + '_AREA.csv', 'w', newline='') as fn:
     
             writer = csv.writer(fn)
     
@@ -196,7 +196,7 @@ def output_csv(Fo, data, area, peaks, times, thresholds, responses, file):
                 writer.writerows([row])
     
     
-        with open('data-peaks/' + file[file.find("A"):-4] + '_PEAKS.csv', 'w', newline='') as fn:
+        with open(output_dir + '/data-peaks/' + recording_name + '_PEAKS.csv', 'w', newline='') as fn:
     
             writer = csv.writer(fn)
     
@@ -205,7 +205,7 @@ def output_csv(Fo, data, area, peaks, times, thresholds, responses, file):
                 writer.writerows([row])
     
     
-        with open('data-peaks/' + file[file.find("A"):-4] + '_TIMES.csv', 'w', newline='') as fn:
+        with open(output_dir + '/data-peaks/' + recording_name + '_TIMES.csv', 'w', newline='') as fn:
     
             writer = csv.writer(fn)
     
@@ -213,7 +213,7 @@ def output_csv(Fo, data, area, peaks, times, thresholds, responses, file):
     
                 writer.writerows([row])
                 
-        with open('data-peaks/' + file[file.find("A"):-4] + '_THRESHOLD.csv', 'w', newline='') as fn:
+        with open(output_dir + '/data-peaks/' + recording_name + '_THRESHOLD.csv', 'w', newline='') as fn:
             
             writer = csv.writer(fn)
     
@@ -221,7 +221,7 @@ def output_csv(Fo, data, area, peaks, times, thresholds, responses, file):
     
                 writer.writerows([row])
                 
-        with open('data-peaks/' + file[file.find("A"):-4] + '_RESPONSES.npy', 'wb') as fn:
+        with open(output_dir + '/data-peaks/' + recording_name + '_RESPONSES.npy', 'wb') as fn:
             
             np.save(fn, np.array(responses), allow_pickle=True)
                 
@@ -239,8 +239,8 @@ def thresh_filter_responses(resp_db, thresh_db): #response arrays should have a 
     return fltrd_resp_db
 
 
-def mean_stack(stacked): 
-            
+def mean_stack(stacked):
+    
     meaned = np.nanmean(stacked, axis=0, dtype = np.float64)
     return  meaned
 
@@ -309,38 +309,40 @@ def plot_averaged(grouped_by_treatment, time_list):
 
 
 
-def main():
-    rootdir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\training_19may23'
-    files =[f.path[:f.path.rfind('\\')+1] for i in glob.glob(f'{rootdir}/*/**/***/',recursive=True) for f in os.scandir(i) if f.path.endswith('iscell.npy')]
+input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\training_19may23'
+files =[f.path[:f.path.rfind('\\')+1] for i in glob.glob(f'{input_dir}/*/**/***/',recursive=True) for f in os.scandir(i) if f.path.endswith('iscell.npy')]
+output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data"
+
+stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/summaries/stim_timings.csv"
+stims = pd.read_csv(stims_timings)
+stims = stims.set_index("file")
+
+resp_db = {}
+thresh_db = {}
+
+for file in files:
+    #perform deltaF operation
+    raw_trace = is_cell_responsive(file)
+    percentiles = calculate_percentiles(raw_trace)
+    Fo, deltaf = deltaF(raw_trace, percentiles)
+        
+    #perform response metric operations
+    recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group() #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
     
-    stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/summaries/stim_timings.csv"
-    stims = pd.read_csv(stims_timings)
-    stims = stims.set_index("file")     
+    try:
+        area, peaks, times, thresholds, responses = find_peaks_in_data(deltaf, stims, recording_name)
+        
+    except KeyError:
+        print(file)
+        pass
     
-    resp_db = {}
-    thresh_db = {}
+    output_csv(Fo, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name)
     
-    for file in files:
-        #perform deltaF operation
-        raw_trace = is_cell_responsive(file)
-        percentiles = calculate_percentiles(raw_trace)
-        Fo_temp, deltaf = deltaF(raw_trace, percentiles)
-            
-        #perform response metric operations
-        recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group() #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
-        
-        try:
-            area, peaks, times, thresholds, responses = find_peaks_in_data(deltaF, stims, recording_name)
-            
-        except KeyError:
-            print(file)
-            pass
-        
-        output_csv(Fo_temp, deltaf, area, peaks, times, thresholds, responses, file)
-        
-        resp_db[recording_name] = responses
-        thresh_db[recording_name] = thresholds
-        
+    resp_db[recording_name] = responses
+    thresh_db[recording_name] = thresholds
+
+
+def make_plots(resp_db, thresh_db):
     #Prepare variables needed to plot average traces
     treatments = {"cap_and_train": ["21sep22", "22jun22", "26may22", "13aug22"], "cap_notrain": ["01apr23", "02feb23", "30mar23"],
     "nocap_train": ["07sep22", "15jun22", "20jul22", "27apr22"]}
@@ -351,4 +353,5 @@ def main():
     
     plot_averaged(grouped_by_treatment, time_list)
     
-main()
+    
+#Run data processing
