@@ -1,12 +1,8 @@
-import os
-
-import csv
-
+import csv, os
 from sklearn.metrics import auc
-
 import pandas as pd
-
 import numpy as np
+
 
 def read_in_csv(file):
 
@@ -18,66 +14,42 @@ def read_in_csv(file):
 
 def output_new_csv(area, peaks, times, threshold, responses, file):
         
-
     if not os.path.exists('data-peaks/'):
-
         os.makedirs('data-peaks/')
         
         
     with open('data-peaks/' + file[file.find("A"):-4] + '_AREA.csv', 'w', newline='') as fn:
-
         writer = csv.writer(fn)
         writer.writerow(area)
 
 
     with open('data-peaks/' + file[file.find("A"):-4] + '_PEAKS.csv', 'w', newline='') as fn:
-
         writer = csv.writer(fn)
-
         writer.writerow(peaks)
 
 
     with open('data-peaks/' + file[file.find("A"):-4] + '_TIMES.csv', 'w', newline='') as fn:
-
         writer = csv.writer(fn)
-
         writer.writerow(times)
             
     with open('data-peaks/' + file[file.find("A"):-4] + '_THRESHOLD.csv', 'w', newline='') as fn:
-
         writer = csv.writer(fn)
-
         writer.writerow(threshold)
     
     with open('data-peaks/' + file[file.find("A"):-4] + '_RESPONSES.npy', 'wb') as fn:
         np.save(fn, np.array(responses), allow_pickle=True)
     
             
-def roll_and_average(data): 
-    
-    data = np.array(data)       
-    meaned = np.mean(data,axis=0).tolist()
-    
-    return meaned
-
 def find_peaks_in_data(data, stim_times, animal):
 
-
     peaks = []
-
     times = []
-
     area = []
-    
     threshold = []
-
     responses = []
-    
-    a=0
     
     first_stim = stim_times.at[animal, "first stim"]
     
-    a+=1
     for i in range(5):
         window = first_stim + i*915
         if window - 250 < 0:
@@ -97,6 +69,7 @@ def find_peaks_in_data(data, stim_times, animal):
         peaks.append(max(data[left:right]))
 
         times.append(data.index(max(data[left:right])) + 1)
+        
         try:
             threshold.append(max(data[left-100:left]))
         except:
@@ -105,7 +78,6 @@ def find_peaks_in_data(data, stim_times, animal):
     return area, peaks, times, threshold, responses
 
        
-
 def main():
 
     stim_times = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/summaries/stim_timings.csv"
@@ -128,8 +100,6 @@ def main():
         except KeyError:
             pass
 
+#Run script
 
-
-if __name__ == "__main__":
-
-    main()
+main()
