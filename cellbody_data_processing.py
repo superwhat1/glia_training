@@ -4,11 +4,22 @@ Created on Wed Jul 26 15:15:43 2023
 
 @author: BioCraze
 """
-import numpy as np
-import pandas as pd
-import os, glob, statistics, csv, re
-from sklearn.metrics import auc
-import matplotlib.pyplot as plt
+#Import packages needed to install packages in case they are not installed.
+import sys, subprocess
+
+#Attempt to import packages and if they are not installed, install them.
+try:
+    import numpy as np
+    import pandas as pd
+    import os, glob, statistics, csv, re
+    from sklearn.metrics import auc
+    import matplotlib.pyplot as plt
+    
+except ImportError as e:
+    package = re.search("\'.+\'", str(e)).group()[1:-1]
+    print(package + " not installed")
+    subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
+
 
 def is_cell_responsive(file, recording_name):
     
@@ -214,25 +225,30 @@ def plot_averaged(meaned, title):
     plt.show()
 '''
 
-def group_by_treatment(treatments, fltrd_resp_db):
+def group_by_treatment(resp_db, thresh_db):
+    treatments = {"cap_and_train": ["21sep22", "22jun22", "26may22", "13aug22"], "cap_notrain": ["01apr23", "02feb23", "30mar23"],
+    "nocap_train": ["07sep22", "15jun22", "20jul22", "27apr22"], "nocap_notrain":["19mai23"]}
+    
+    fltrd_resp_db = thresh_filter_responses(resp_db, thresh_db)
     
     grouped_by_treatment ={}
     
-    for key, values in treatments.items():
-        grouped_by_treatment[key] ={}
-        for value in values:
+    for treatment, experiments in treatments.items():
+        grouped_by_treatment[treatment] ={}
+        for experiment in experiments:
             kl=[]
             vl=[]
-            for k, v in fltrd_resp_db.items():
-                if value in k:
-                    kl.append(k)
-                    vl.append(v)
+            for exp, traces in fltrd_resp_db.items():
+                if experiment in exp:
+                    kl.append(exp)
+                    vl.append(traces)
             kv = dict(zip(kl,vl))
-            grouped_by_treatment[key][value] = kv
+            grouped_by_treatment[treatment][experiment] = kv
             
     return grouped_by_treatment  
 
 
+#Function for ploting aligned and averaged responses
 def plot_averaged(grouped_by_treatment, time_list):
     
     base_min = {}
@@ -240,7 +256,7 @@ def plot_averaged(grouped_by_treatment, time_list):
     ready_to_plot = {}
     
     for i in time_list:
-        ready_to_plot[i]={}
+        ready_to_plot[i] = {}
         for treatment, animals in grouped_by_treatment.items():
             if treatment != "cap_notrain":
                 to_stack = []
@@ -271,12 +287,9 @@ def plot_averaged(grouped_by_treatment, time_list):
 #Function for ploting aligned and averaged responses
 def make_plots(resp_db, thresh_db):
     #Prepare variables needed to plot average traces
-    treatments = {"cap_and_train": ["21sep22", "22jun22", "26may22", "13aug22"], "cap_notrain": ["01apr23", "02feb23", "30mar23"],
-    "nocap_train": ["07sep22", "15jun22", "20jul22", "27apr22"]}
     time_list=['min15', 'min45', 'min60', 'min80', 'min100']
     
-    fltrd_resp_db = thresh_filter_responses(resp_db, thresh_db)
-    grouped_by_treatment = group_by_treatment(treatments, fltrd_resp_db)
+    grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
     
     plot_averaged(grouped_by_treatment, time_list)
     
@@ -307,7 +320,7 @@ for file in files:
         area, peaks, times, thresholds, responses = find_peaks_in_data(deltaf, stims, recording_name)
         
     except KeyError:
-        print(file)
+        print(file + " contains no traces, so it was skipped!")
         pass
     
     output_csv(Fo, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name)
@@ -315,4 +328,4 @@ for file in files:
     resp_db[recording_name] = responses
     thresh_db[recording_name] = thresholds
 
-
+    group_by_treatment(resp_db, thresh_db)
