@@ -14,6 +14,8 @@ try:
     import os, glob, statistics, csv, re
     from sklearn.metrics import auc
     import matplotlib as plt
+    import pickle
+    from datetime import date
     
 except ImportError as e:
     package = re.search("\'.+\'", str(e)).group()[1:-1]
@@ -183,7 +185,7 @@ def plot_averaged(meaned, title):
 
 def group_by_treatment(resp_db, thresh_db):
     treatments = {"cap_and_train": ["21sep22", "22jun22", "26may22", "13aug22"], "cap_notrain": ["01apr23", "02feb23", "30mar23"],
-    "nocap_train": ["07sep22", "15jun22", "20jul22", "27apr22"], "nocap_notrain":["19mai23"]}
+    "nocap_train": ["07sep22", "15jun22", "20jul22", "27apr22"], "nocap_notrain":["19may23"]}
     
     fltrd_resp_db = thresh_filter_responses(resp_db, thresh_db)
     
@@ -238,47 +240,80 @@ def plot_averaged(grouped_by_treatment, time_list):
         plt.show()
         
         
-def make_plots(resp_db, thresh_db):
+def make_plots(grouped_by_treatment):
     
     #Prepare variables needed to plot average traces    
     time_list=['min15', 'min45', 'min60', 'min80', 'min100']
-
-    grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
     
     plot_averaged(grouped_by_treatment, time_list)
  
     
-#Run data processing
-input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\neuropil'
-files =[i.path for i in os.scandir(input_dir) if i.path.endswith('.csv')]
-output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\neuropil\\"
-
-stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/summaries/stim_timings.csv"
-stims = pd.read_csv(stims_timings)
-stims = stims.set_index("file")
-
-resp_db = {}
-thresh_db = {}
-
-for file in files:
-    #perform deltaF operation
-    raw_trace = read_in_neuropil_csv(file)
-    baselines = calculate_neuropil_baselines(raw_trace)
-    Fo, deltaf = neuropil_deltaF(raw_trace, baselines)
+def process_from_raw_traces():
+    #Run data processing
+    input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\neuropil activity\\raw'
+    files =[i.path for i in os.scandir(input_dir) if i.path.endswith('.csv')]
+    output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\neuropil activity\\"
     
-    #perform response metric operations
-    recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group() #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
+    stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/summaries/stim_timings.csv"
+    stims = pd.read_csv(stims_timings)
+    stims = stims.set_index("file")
     
-    try:
-        area, peaks, times, thresholds, responses = find_peaks_in_data(deltaf, stims, recording_name)
+    resp_db = {}
+    thresh_db = {}
+    
+    for file in files:
+        #perform deltaF operation
+        raw_trace = read_in_neuropil_csv(file)
+        baselines = calculate_neuropil_baselines(raw_trace)
+        Fo, deltaf = neuropil_deltaF(raw_trace, baselines)
         
-    except KeyError:
-        print(file + " contains no traces, so it was skipped!")
-        pass
+        #perform response metric operations
+        recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group() #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
+        
+        try:
+            area, peaks, times, thresholds, responses = find_peaks_in_data(deltaf, stims, recording_name)
+            
+        except KeyError:
+            print(file + " contains no traces, so it was skipped!")
+            pass
+        
+        #Save the data to files
+        output_neuropil_csv(Fo, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name)
+        
+        #Agregate the responses and the thresholds then filter them and group them by experimental condition
+        resp_db[recording_name] = responses
+        thresh_db[recording_name] = thresholds
     
-    output_neuropil_csv(Fo, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name)
+    grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
+        
+    #Write the grouped data to a txt file for use at another time
+    with open(output_dir + 'grouped_neuropil_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
+        pickle.dump(grouped_by_treatment, of)
     
-    resp_db[recording_name] = responses
-    thresh_db[recording_name] = thresholds
-       
-    group_by_treatment(resp_db, thresh_db)
+
+def process_from_responses():
+    
+    input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\neuropil activity\\data-peaks'
+    response_files =[f.path  for f in os.scandir(input_dir) if f.path.endswith('RESPONSES.npy')]
+    output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\neuropil activity\\"
+    
+    resp_db = {}
+    thresh_db = {}
+    
+    for file in response_files:
+        #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
+        recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group()
+        responses = np.load(file, allow_pickle=True)
+        thresholds = pd.read_csv(file[:file.rfind('_')] + '_THRESHOLD.csv', header=None).iloc[0,:].to_list()
+        
+        #Agregate the responses and the thresholds then filter them and group them by experimental condition
+        resp_db[recording_name] = responses
+        thresh_db[recording_name] = thresholds
+        
+    grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
+    
+        #Write the grouped data to a txt file for use at another time
+    with open(output_dir + 'grouped_neuropil_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
+        pickle.dump(grouped_by_treatment, of)
+
+process_from_responses()

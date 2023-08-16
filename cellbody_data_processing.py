@@ -14,6 +14,8 @@ try:
     import os, glob, statistics, csv, re
     from sklearn.metrics import auc
     import matplotlib.pyplot as plt
+    import pickle
+    from datetime import date
     
 except ImportError as e:
     package = re.search("\'.+\'", str(e)).group()[1:-1]
@@ -21,7 +23,7 @@ except ImportError as e:
     subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
 
 
-def is_cell_responsive(file, recording_name):
+def is_cell_responsive(file, recording_name, output_dir):
     
     #Set folder path and then use it to open the iscell with shape: two columns, first contains 0 or 1 depending on if ROI is a cell and second the probability of that ROI of being a cell according to the suite2p classifier. 
     #And to open F.npy containing an array of fluorescent trace arrays
@@ -227,7 +229,7 @@ def plot_averaged(meaned, title):
 
 def group_by_treatment(resp_db, thresh_db):
     treatments = {"cap_and_train": ["21sep22", "22jun22", "26may22", "13aug22"], "cap_notrain": ["01apr23", "02feb23", "30mar23"],
-    "nocap_train": ["07sep22", "15jun22", "20jul22", "27apr22"], "nocap_notrain":["19mai23"]}
+    "nocap_train": ["07sep22", "15jun22", "20jul22", "27apr22"], "nocap_notrain":["19may23"]}
     
     fltrd_resp_db = thresh_filter_responses(resp_db, thresh_db)
     
@@ -284,48 +286,83 @@ def plot_averaged(grouped_by_treatment, time_list):
         plt.show()
 
 
-#Function for ploting aligned and averaged responses
-def make_plots(resp_db, thresh_db):
+def make_plots(grouped_by_treatment):#Function for ploting aligned and averaged responses
+
     #Prepare variables needed to plot average traces
     time_list=['min15', 'min45', 'min60', 'min80', 'min100']
     
-    grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
-    
     plot_averaged(grouped_by_treatment, time_list)
     
+def process_from_raw_traces():
+    #Run data processing
+    cell_type = "neurons" #neurons or glia
     
-#Run data processing
-input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\training_19may23'
-files =[f.path[:f.path.rfind('\\')+1] for i in glob.glob(f'{input_dir}/*/**/***/',recursive=True) for f in os.scandir(i) if f.path.endswith('iscell.npy')]
-output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\"
-
-stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/summaries/stim_timings.csv"
-stims = pd.read_csv(stims_timings)
-stims = stims.set_index("file")
-
-resp_db = {}
-thresh_db = {}
-
-for file in files:
-    #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
-    recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group()
+    input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\'
+    files =[f.path[:f.path.rfind('\\')+1] for i in glob.glob(f'{input_dir}/*/**/***/',recursive=True) for f in os.scandir(i) if f.path.endswith('iscell.npy')]
+    output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\"
     
-    #perform deltaF operation
-    raw_trace = is_cell_responsive(file, recording_name)
-    baselines = calculate_baselines(raw_trace)
-    Fo, deltaf = deltaF(raw_trace, baselines)
+    stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/summaries/stim_timings.csv"
+    stims = pd.read_csv(stims_timings)
+    stims = stims.set_index("file")
+    
+    resp_db = {}
+    thresh_db = {}
+    
+    for file in files:
+        #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
+        recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group()
         
-    #perform response metric operations 
-    try:
-        area, peaks, times, thresholds, responses = find_peaks_in_data(deltaf, stims, recording_name)
+        #perform deltaF operation
+        try:
+            raw_trace = is_cell_responsive(file, recording_name, output_dir)
+            baselines = calculate_baselines(raw_trace)
+            Fo, deltaf = deltaF(raw_trace, baselines)
+        except Exception:
+            pass
         
-    except KeyError:
-        print(file + " contains no traces, so it was skipped!")
-        pass
+        #perform response metric operations 
+        try:
+            area, peaks, times, thresholds, responses = find_peaks_in_data(deltaf, stims, recording_name)
+        except KeyError:
+            print(file + " contains no traces, so it was skipped!")
+            pass
+        
+        #Save the data to files
+        output_csv(Fo, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name)
+        
+        #Agregate the responses and the thresholds then filter them and group them by experimental condition
+        resp_db[recording_name] = responses
+        thresh_db[recording_name] = thresholds
+        grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
     
-    output_csv(Fo, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name)
+        #Write the grouped data to a txt file for use at another time
+        with open(output_dir + 'grouped_' + cell_type + '_responses_by_treatment' + date.today() + '.pkl', 'wb') as of:
+            pickle.dump(grouped_by_treatment, of)
+            
+def process_from_responses():
+    cell_type = "neurons" #neurons or glia
     
-    resp_db[recording_name] = responses
-    thresh_db[recording_name] = thresholds
+    input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\max proj roi activity\\data-peaks\\'
+    response_files =[f.path  for f in os.scandir(input_dir) if f.path.endswith('RESPONSES.npy')]
+    output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\"
+    
+    resp_db = {}
+    thresh_db = {}
+    
+    for file in response_files:
+        #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
+        recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group()
+        responses = np.load(file, allow_pickle=True)
+        thresholds = np.array(pd.read_csv(file[:file.rfind('_')] + '_THRESHOLD.csv', header=None).iloc[:, 1:])
+        
+        #Agregate the responses and the thresholds then filter them and group them by experimental condition
+        resp_db[recording_name] = responses
+        thresh_db[recording_name] = thresholds
+        grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
+    
+        #Write the grouped data to a txt file for use at another time
+        with open(output_dir + 'grouped_' + cell_type + '_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
+            pickle.dump(grouped_by_treatment, of)
 
-    group_by_treatment(resp_db, thresh_db)
+process_from_responses()
+
