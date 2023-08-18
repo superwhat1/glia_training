@@ -16,6 +16,7 @@ try:
     import matplotlib.pyplot as plt
     import pickle
     from datetime import date
+    from copy import deepcopy
     
 except ImportError as e:
     package = re.search("\'.+\'", str(e)).group()[1:-1]
@@ -66,26 +67,24 @@ def calculate_baselines(data, percentile=7.5):
 
 def deltaF(data, baselines):
 
-    Fo_stdev = []
     deltaf = []
     count=0
     
     for cell, frames in enumerate(data):
         
         count+=1
-        new_column = []
+        new_trace = []
         
         for frame, value in enumerate(frames):
             try:
-                new_column.append((float(value) - baselines[cell][frame]) / float(baselines[cell][frame]))
+                new_trace.append((float(value) - baselines[cell][frame]) / float(baselines[cell][frame]))
     
             except IndexError:
-                new_column.append((float(value) - baselines[cell][frame-1]) / float(baselines[cell][frame-1]))
+                new_trace.append((float(value) - baselines[cell][frame-1]) / float(baselines[cell][frame-1]))
             
-        Fo_stdev.append([ f"trace_{count}",(1.5 * statistics.stdev(baselines[cell])) / statistics.mean(baselines[cell])]) #append the delta F/Fo of the 1.5*STDEV of Fo 
-        deltaf.append(new_column)
+        deltaf.append(new_trace)
 
-    return Fo_stdev, deltaf
+    return  deltaf
     
     
 def find_peaks_in_data(data, stims, recording_name):
@@ -138,7 +137,7 @@ def find_peaks_in_data(data, stims, recording_name):
     return area, peaks, times, thresholds, responses
     
     
-def output_csv(Fo, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name):
+def output_csv(baselines, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name):
       
     print("writing")
     if not os.path.exists(output_dir + 'deltaF/'):
@@ -151,19 +150,24 @@ def output_csv(Fo, deltaf, area, peaks, times, thresholds, responses, output_dir
             
     with open(output_dir + 'deltaF/' + recording_name + '_Fo.csv', 'w', newline='') as fn:
         writer = csv.writer(fn)
-        writer.writerows(Fo)
+        for row in baselines:
+            writer.writerows([row])
         
-    if len(area) > 0: 
-        for index, row in enumerate(area):
+    if len(area) > 0:
+        area_c = deepcopy(area)
+        for index, row in enumerate(area_c):
+            row.insert(0, f"trace_{index+1}")
+        
+        peaks_c = deepcopy(peaks)
+        for index, row in enumerate(peaks_c):
             row.insert(0, f"trace_{index+1}")
             
-        for index, row in enumerate(peaks):
+        times_c = deepcopy(times) 
+        for index, row in enumerate(times_c):
             row.insert(0, f"trace_{index+1}")
             
-        for index, row in enumerate(times):
-            row.insert(0, f"trace_{index+1}")
-            
-        for index, row in enumerate(thresholds):
+        thresholds_c = deepcopy(thresholds)
+        for index, row in enumerate(thresholds_c):
             row.insert(0, f"trace_{index+1}")
             
         if not os.path.exists(output_dir + 'data-peaks/'):
@@ -171,22 +175,22 @@ def output_csv(Fo, deltaf, area, peaks, times, thresholds, responses, output_dir
             
         with open(output_dir + 'data-peaks/' + recording_name + '_AREA.csv', 'w', newline='') as fn:
             writer = csv.writer(fn)
-            for row in area:
+            for row in area_c:
                 writer.writerows([row])
     
         with open(output_dir + 'data-peaks/' + recording_name + '_PEAKS.csv', 'w', newline='') as fn:
             writer = csv.writer(fn)
-            for row in peaks:
+            for row in peaks_c:
                 writer.writerows([row])
     
         with open(output_dir + 'data-peaks/' + recording_name + '_TIMES.csv', 'w', newline='') as fn:
             writer = csv.writer(fn)
-            for row in times:
+            for row in times_c:
                 writer.writerows([row])
                 
         with open(output_dir + 'data-peaks/' + recording_name + '_THRESHOLD.csv', 'w', newline='') as fn:
             writer = csv.writer(fn)
-            for row in thresholds:
+            for row in thresholds_c:
                 writer.writerows([row])
                 
         with open(output_dir + 'data-peaks/' + recording_name + '_RESPONSES.npy', 'wb') as fn:
@@ -196,11 +200,11 @@ def output_csv(Fo, deltaf, area, peaks, times, thresholds, responses, output_dir
 def thresh_filter_responses(resp_db, thresh_db): #response arrays should have a shape of cells*stims*time
             
     #remove cell responses where the max is less than the threshold        
-    for k, v in resp_db.items():
-        for w, x in enumerate(v):
-            for y, z in enumerate(x):
-                if z.max() < thresh_db[k][w][y]:
-                    resp_db[k][w][y] *= np.nan
+    for recording, cells in resp_db.items():
+        for cell, responses in enumerate(cells):
+            for response, trace in enumerate(responses):
+                if trace.max() < thresh_db[recording][cell][response]:
+                    resp_db[recording][cell][response] *= np.nan
                     
     fltrd_resp_db = resp_db
     
@@ -293,52 +297,58 @@ def make_plots(grouped_by_treatment):#Function for ploting aligned and averaged 
     
     plot_averaged(grouped_by_treatment, time_list)
     
-def process_from_raw_traces():
-    #Run data processing
-    cell_type = "neurons" #neurons or glia
+#def process_from_raw_traces():
+#Run data processing
+cell_type = "neurons" #neurons or glia
+
+input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\'
+files =[f.path[:f.path.rfind('\\')+1] for i in glob.glob(f'{input_dir}/*/**/***/',recursive=True) for f in os.scandir(i) if f.path.endswith('iscell.npy')]
+output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\"
+
+stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/summaries/stim_timings.csv"
+stims = pd.read_csv(stims_timings)
+stims = stims.set_index("file")
+
+resp_db = {}
+thresh_db = {}
+
+for file in files:
+    #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
+    recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group()
     
-    input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\'
-    files =[f.path[:f.path.rfind('\\')+1] for i in glob.glob(f'{input_dir}/*/**/***/',recursive=True) for f in os.scandir(i) if f.path.endswith('iscell.npy')]
-    output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\"
+    #perform deltaF operation
+    try:
+        print("Normalizing " + file)
+        raw_trace = is_cell_responsive(file, recording_name, output_dir)
+        baselines = calculate_baselines(raw_trace)
+        deltaf = deltaF(raw_trace, baselines)
+    except Exception:
+        print(file + " contains no traces, so it was skipped!")
+        pass
     
-    stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/summaries/stim_timings.csv"
-    stims = pd.read_csv(stims_timings)
-    stims = stims.set_index("file")
+    #perform response metric operations 
+    try:
+        print("Extracting response metrics of " + file)
+        area, peaks, times, thresholds, responses = find_peaks_in_data(deltaf, stims, recording_name)
     
-    resp_db = {}
-    thresh_db = {}
-    
-    for file in files:
-        #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
-        recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group()
-        
-        #perform deltaF operation
-        try:
-            raw_trace = is_cell_responsive(file, recording_name, output_dir)
-            baselines = calculate_baselines(raw_trace)
-            Fo, deltaf = deltaF(raw_trace, baselines)
-        except Exception:
-            pass
-        
-        #perform response metric operations 
-        try:
-            area, peaks, times, thresholds, responses = find_peaks_in_data(deltaf, stims, recording_name)
-        except KeyError:
-            print(file + " contains no traces, so it was skipped!")
-            pass
-        
         #Save the data to files
-        output_csv(Fo, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name)
+        output_csv(baselines, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name)
         
         #Agregate the responses and the thresholds then filter them and group them by experimental condition
-        resp_db[recording_name] = responses
+        resp_db[recording_name] = np.array(responses)
         thresh_db[recording_name] = thresholds
-        grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
+        
+    except KeyError:
+        print(file + " contains no responses, so it was skipped!")
+        pass
     
-        #Write the grouped data to a txt file for use at another time
-        with open(output_dir + 'grouped_' + cell_type + '_responses_by_treatment' + date.today() + '.pkl', 'wb') as of:
-            pickle.dump(grouped_by_treatment, of)
-            
+    grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
+
+#Write the grouped data to a txt file for use at another time
+with open(output_dir + 'grouped_' + cell_type + '_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
+    pickle.dump(grouped_by_treatment, of)
+    
+    
 def process_from_responses():
     cell_type = "neurons" #neurons or glia
     
@@ -359,10 +369,12 @@ def process_from_responses():
         resp_db[recording_name] = responses
         thresh_db[recording_name] = thresholds
         grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
-    
+        
         #Write the grouped data to a txt file for use at another time
         with open(output_dir + 'grouped_' + cell_type + '_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
             pickle.dump(grouped_by_treatment, of)
 
-process_from_responses()
+#process_from_responses()
+#process_from_raw_traces()
+
 

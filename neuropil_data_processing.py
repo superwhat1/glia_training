@@ -50,24 +50,19 @@ def calculate_neuropil_baselines(data, percentile=7.5):
 
 
 def neuropil_deltaF(data, baselines):
-
     deltaf = []
     count=0
 
     for frames, value in enumerate(data):
         count+=1
-        ratioed = []
-
+        
         try:
-            ratioed.append((float(value) - baselines[frames]) / float(baselines[frames]))
+            deltaf.append((float(value) - baselines[frames]) / float(baselines[frames]))
 
         except IndexError:
-            ratioed.append((float(value) - baselines[frames-1]) / float(baselines[frames-1]))
-         
-        deltaf.append(ratioed)
+            deltaf.append((float(value) - baselines[frames-1]) / float(baselines[frames-1]))
 
-    Fo_stdev =[ f"trace_{count}",(1.5 * statistics.stdev(baselines)) / statistics.mean(baselines)] #calculate the delta F/Fo of the 1.5*STDEV of Fo 
-    return Fo_stdev, deltaf
+    return deltaf
 
 
 def find_peaks_in_data(data, stim_times, animal):
@@ -108,7 +103,7 @@ def find_peaks_in_data(data, stim_times, animal):
     return area, peaks, times, threshold, responses
 
 
-def output_neuropil_csv(Fo, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name):
+def output_neuropil_csv(baselines, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name):
       
     print("writing")
     if not os.path.exists(output_dir + 'deltaF/'):
@@ -117,12 +112,13 @@ def output_neuropil_csv(Fo, deltaf, area, peaks, times, thresholds, responses, o
     with open(output_dir + 'deltaF/' + recording_name + '_df.csv', 'w', newline='') as fn:
         writer = csv.writer(fn)
         for row in deltaf:
-            writer.writerows([row])
+            writer.writerow([row])
             
             
     with open(output_dir + 'deltaF/' + recording_name + '_Fo.csv', 'w', newline='') as fn:
         writer = csv.writer(fn)
-        writer.writerows(Fo)
+        for row in baselines:
+            writer.writerow([row])
         
     if len(area) > 0:
     
@@ -153,10 +149,10 @@ def output_neuropil_csv(Fo, deltaf, area, peaks, times, thresholds, responses, o
 def thresh_filter_responses(resp_db, thresh_db): #response arrays should have a shape of cells*stims*time
             
     #remove cell responses where the max is less than the threshold        
-    for k, v in resp_db.items():
-        for i in range(len(v)):
-            if v[i].max() < thresh_db[k][i]:
-                resp_db[k][i] *= np.nan
+    for recording, responses in resp_db.items():
+        for i in range(len(responses)):
+            if responses[i].max() < thresh_db[recording][i]:
+                resp_db[recording][i] *= np.nan
                 
     fltrd_resp_db = resp_db
     
@@ -265,25 +261,26 @@ def process_from_raw_traces():
         #perform deltaF operation
         raw_trace = read_in_neuropil_csv(file)
         baselines = calculate_neuropil_baselines(raw_trace)
-        Fo, deltaf = neuropil_deltaF(raw_trace, baselines)
+        deltaf = neuropil_deltaF(raw_trace, baselines)
         
         #perform response metric operations
         recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group() #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
         
         try:
+            print('working on ' + file)
             area, peaks, times, thresholds, responses = find_peaks_in_data(deltaf, stims, recording_name)
-            
+        
+            #Save the data to files
+            output_neuropil_csv(baselines, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name)
+        
+            #Agregate the responses and the thresholds then filter them and group them by experimental condition
+            resp_db[recording_name] = np.array(responses)
+            thresh_db[recording_name] = thresholds
+        
         except KeyError:
             print(file + " contains no traces, so it was skipped!")
             pass
         
-        #Save the data to files
-        output_neuropil_csv(Fo, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name)
-        
-        #Agregate the responses and the thresholds then filter them and group them by experimental condition
-        resp_db[recording_name] = responses
-        thresh_db[recording_name] = thresholds
-    
     grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
         
     #Write the grouped data to a txt file for use at another time
@@ -316,4 +313,15 @@ def process_from_responses():
     with open(output_dir + 'grouped_neuropil_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
         pickle.dump(grouped_by_treatment, of)
 
-process_from_responses()
+#process_from_responses()
+process_from_raw_traces()
+
+'''
+grouped_by_treatment = pickle.load(open("C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/analysis/neuropil activity/grouped_neuropil_responses_by_treatment2023-08-16.pkl",'rb'))
+'''
+
+
+
+
+
+
