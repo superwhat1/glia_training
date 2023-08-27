@@ -6,20 +6,21 @@ Created on Tue Aug 22 16:48:23 2023
 """
 
 #K-SHAPE METHOD for clustering time series
-import numpy
+import numpy as np
 import matplotlib.pyplot as plt
+import pickle as pkl
 
 from tslearn.clustering import KShape
 from tslearn.datasets import CachedDatasets
 from tslearn.preprocessing import TimeSeriesScalerMeanVariance
 
 seed = 0
-numpy.random.seed(seed)
+np.random.seed(seed)
 X_train, y_train, X_test, y_test = CachedDatasets().load_dataset("Trace")
 # Keep first 3 classes and 50 first time series
 
 X_train = X_train[:50]
-numpy.random.shuffle(X_train)
+np.random.shuffle(X_train)
 # For this method to operate properly, prior scaling is required
 X_train = TimeSeriesScalerMeanVariance().fit_transform(X_train)
 sz = X_train.shape[1]
@@ -52,11 +53,38 @@ plt.tight_layout()
 plt.show()
 
 
+#import the Responses dictionary
+grouped_by_treatment = pkl.load(open("C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/analysis/max proj roi activity/grouped_neurons_responses_by_treatment2023-08-16.pkl", 'rb',))
+
+time_list=['min15', 'min45', 'min60', 'min80', 'min100']
+ready_to_analyze = {}
+
+for i in time_list:
+    ready_to_analyze[i] = {}
+    for treatment, animals in grouped_by_treatment.items():
+        to_add = []
+        for j in range(5):
+            to_stack = []
+            for animal, times in animals.items():    
+                for time, cells in times.items():
+                    for cell in cells:
+                        if i in time:
+                            to_stack.append(cell[j,:]) #with data of shape cells, n=5 responses, traces of length 350
+            
+                to_add.append(np.stack(to_stack))
+        ready_to_analyze[i][treatment] = to_add
+
 #EUCLIDIAN DISTANCE method for determining time series similarity
 from sklearn.metrics.pairwise import euclidean_distances
 
 euc_dist = euclidean_distances(data)
 pd.DataFrame(euc_dist, index=recording_name, columns=recording_name)
+fig,ax = plt.subplot()
+ax.imshow(euc_dist, vmin = -1, vmax = 1)
 
 #PEARSON CORRELATION method for determining time series similarity
-np.corrceff(x,y)
+
+corr = np.corrceff()
+fig,ax = plt.subplot()
+ax.imshow(corr, vmin = -1, vmax = 1)
+
