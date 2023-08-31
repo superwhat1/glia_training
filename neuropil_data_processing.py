@@ -181,7 +181,7 @@ def plot_averaged(meaned, title):
 
 def group_by_treatment(resp_db, thresh_db):
     treatments = {"cap_and_train": ["21sep22", "22jun22", "26may22", "13aug22"], "cap_notrain": ["01apr23", "02feb23", "30mar23"],
-    "nocap_train": ["07sep22", "15jun22", "20jul22", "27apr22"], "nocap_notrain":["19may23"]}
+    "nocap_train": ["07sep22", "15jun22", "20jul22", "27apr22"], "nocap_notrain":["19may23", "23aug23"]}
     
     fltrd_resp_db = thresh_filter_responses(resp_db, thresh_db)
     
