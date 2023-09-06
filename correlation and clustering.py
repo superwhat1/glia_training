@@ -56,7 +56,7 @@ plt.show()
 '''
 
 #import the Responses dictionary
-grouped_by_treatment = pkl.load(open("C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/analysis/max proj roi activity/grouped_neurons_responses_by_treatment2023-08-16.pkl", 'rb',))
+grouped_by_treatment = pkl.load(open("C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/analysis/max proj roi activity/grouped_neurons_responses_by_treatment2023-09-06.pkl", 'rb',))
 
 time_list=['min15', 'min45', 'min60', 'min80', 'min100']
 ready_to_analyze = {}
