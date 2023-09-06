@@ -297,15 +297,11 @@ def make_plots(grouped_by_treatment):#Function for ploting aligned and averaged 
     
     plot_averaged(grouped_by_treatment, time_list)
     
-def process_from_raw_traces():
-    #Run data processing
+def process_from_raw_traces(input_dir, output_dir, stims_timings):
+
     cell_type = "neurons" #neurons or glia
-    
-    input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\'
     files =[f.path[:f.path.rfind('\\')+1] for i in glob.glob(f'{input_dir}/*/**/***/',recursive=True) for f in os.scandir(i) if f.path.endswith('iscell.npy')]
-    output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\"
     
-    stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/summaries/stim_timings.csv"
     stims = pd.read_csv(stims_timings)
     stims = stims.set_index("file")
     
@@ -349,13 +345,10 @@ def process_from_raw_traces():
         pickle.dump(grouped_by_treatment, of)
         
         
-def process_from_responses():
+def process_from_responses(input_dir, output_dir):
+    
     cell_type = "neurons" #neurons or glia
-    
-    input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\max proj roi activity\\data-peaks\\'
-    response_files =[f.path  for f in os.scandir(input_dir) if f.path.endswith('RESPONSES.npy')]
-    output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\"
-    
+    response_files =[f.path  for f in os.scandir(input_dir) if f.path.endswith('RESPONSES.npy')]  
     resp_db = {}
     thresh_db = {}
     
@@ -374,7 +367,7 @@ def process_from_responses():
         with open(output_dir + 'grouped_' + cell_type + '_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
             pickle.dump(grouped_by_treatment, of)
 
-process_from_responses()
-#process_from_raw_traces()
+#process_from_responses(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\max proj roi activity\\data-peaks\\', output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\")
+process_from_raw_traces(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\training_23aug23\\', output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\training_23aug23\\", stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/summaries/stim_timings.csv")
 
 

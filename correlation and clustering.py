@@ -5,11 +5,13 @@ Created on Tue Aug 22 16:48:23 2023
 @author: David
 """
 
-#K-SHAPE METHOD for clustering time series
+
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle as pkl
 
+#K-SHAPE METHOD for clustering time series
+'''
 from tslearn.clustering import KShape
 from tslearn.datasets import CachedDatasets
 from tslearn.preprocessing import TimeSeriesScalerMeanVariance
@@ -51,7 +53,7 @@ for yi in range(3):
 
 plt.tight_layout()
 plt.show()
-
+'''
 
 #import the Responses dictionary
 grouped_by_treatment = pkl.load(open("C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/analysis/max proj roi activity/grouped_neurons_responses_by_treatment2023-08-16.pkl", 'rb',))
@@ -70,21 +72,33 @@ for i in time_list:
                     for cell in cells:
                         if i in time:
                             to_stack.append(cell[j,:]) #with data of shape cells, n=5 responses, traces of length 350
-            
-                to_add.append(np.stack(to_stack))
+                try:
+                    to_add.append(np.stack(to_stack))
+                except ValueError:
+                    pass
         ready_to_analyze[i][treatment] = to_add
 
 #EUCLIDIAN DISTANCE method for determining time series similarity
 from sklearn.metrics.pairwise import euclidean_distances
+import matplotlib as mpl
 
-euc_dist = euclidean_distances(data)
-pd.DataFrame(euc_dist, index=recording_name, columns=recording_name)
-fig,ax = plt.subplot()
-ax.imshow(euc_dist, vmin = -1, vmax = 1)
+for times, treatments in ready_to_analyze.items():
+    for treatment, responses in treatments.items():
+        for response in np.arange(stop = len(responses), step = 5):
+            concatenated = np.concatenate(responses[response:response+5])
+            nans_removed = concatenated[~np.isnan(concatenated).any(axis=1)]
+            
+            euc_dist = euclidean_distances(nans_removed)
+            #df = pd.DataFrame(euc_dist, index=recording_name, columns=recording_name)
+            fig,ax = plt.subplots()
+            edm = ax.imshow(euc_dist, cmap = 'RdBu_r')
+            fig.colorbar(edm)
+            ax.set_title(times + treatment + " responses " + str(i))
+
 
 #PEARSON CORRELATION method for determining time series similarity
-
+'''
 corr = np.corrceff()
 fig,ax = plt.subplot()
 ax.imshow(corr, vmin = -1, vmax = 1)
-
+'''
