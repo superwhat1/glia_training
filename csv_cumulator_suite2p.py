@@ -11,7 +11,7 @@ import os
 
 
 
-files = [i.path for i in os.scandir("C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/data/data-peaks/") if i.path.endswith('THRESHOLD.csv')]
+files = [i.path for i in os.scandir("C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/analysis/max proj roi activity/data-peaks") if i.path.endswith('THRESHOLD.csv')]
 
 
 
@@ -27,7 +27,7 @@ for file in files:
 
 
 
-new_csv = open("C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/analysis/neuropil activity/cumulated_threshold.csv",'w',newline='')
+new_csv = open("C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/analysis/max proj roi activity/cumulated_thresholds.csv",'w',newline='')
 
 write_to = csv.writer(new_csv)
 for row in cumulative:

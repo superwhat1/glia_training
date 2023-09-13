@@ -79,21 +79,21 @@ for i in time_list:
         ready_to_analyze[i][treatment] = to_add
 
 #EUCLIDIAN DISTANCE method for determining time series similarity
-from sklearn.metrics.pairwise import euclidean_distances
+from sklearn.metrics.pairwise import nan_euclidean_distances
 import matplotlib as mpl
 
 for times, treatments in ready_to_analyze.items():
     for treatment, responses in treatments.items():
         for response in np.arange(stop = len(responses), step = 5):
             concatenated = np.concatenate(responses[response:response+5])
-            nans_removed = concatenated[~np.isnan(concatenated).any(axis=1)]
+            nans_removed = concatenated[~np.isnan(concatenated).all(axis=1)]
             
-            euc_dist = euclidean_distances(nans_removed)
+            euc_dist = nan_euclidean_distances(nans_removed)
             #df = pd.DataFrame(euc_dist, index=recording_name, columns=recording_name)
             fig,ax = plt.subplots()
             edm = ax.imshow(euc_dist, cmap = 'RdBu_r')
             fig.colorbar(edm)
-            ax.set_title(times + treatment + " responses " + str(i))
+            ax.set_title(times + treatment + " responses " + str(response))
 
 
 #PEARSON CORRELATION method for determining time series similarity

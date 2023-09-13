@@ -17,6 +17,8 @@ try:
     import pickle
     from datetime import date
     from copy import deepcopy
+    import scipy.ndimage as sn
+    import math
     
 except ImportError as e:
     package = re.search("\'.+\'", str(e)).group()[1:-1]
@@ -35,7 +37,7 @@ def is_cell_responsive(file, recording_name, output_dir):
     F_fltrd = np.array([F[i] for i in range(len(is_cell)) if is_cell[i][0] == True])
 
     #write data to csv files
-    np.savetxt(output_dir + recording_name +'_neuron_traces.csv', F_fltrd, delimiter=", ", fmt="% 1.4f")
+    np.savetxt(output_dir + recording_name +'_glia_traces.csv', F_fltrd, delimiter=", ", fmt="% 1.4f")
     
     return F_fltrd
 
@@ -86,53 +88,84 @@ def deltaF(data, baselines):
 
     return  deltaf
     
-    
-def find_peaks_in_data(data, stims, recording_name):
+def blur(data: list, sigma: int) -> list:
+    """
+    Returns a blurred trace from 'data'.
+
+    Parameters
+    ----------
+    data: cells, f_intensity
+        The fluorescence intensity traces of the recorded active cells to blur
+        
+    sigma: scalar or sequence of scalars
+        Standard deviation for Gaussian kernel. The standard deviations of the Gaussian filter are given for each axis as a sequence, or as a single number, in which case it is equal for all axes.
+
+    Returns
+    -------
+    F_blur:
+        The blurred fluorenscence traces
+   """
+   
+    nd_data = np.array(data)
+
+    #create array that has m = cell rows and n = time/2 columns.
+    F_blur = sn.gaussian_filter1d(nd_data, sigma=sigma)
+        
+    return F_blur.tolist()
+
+
+def find_peaks_in_data(data, blurred, recording_name, threshold_multiplier):
 
     peaks = [[] for i in range(len(data))]
     times = [[] for i in range(len(data))]
     area = [[] for i in range(len(data))]
     responses = [[] for i in range(len(data))]
     thresholds = [[] for i in range(len(data))]
-    first_stim = stims.at[recording_name, "first stim"]
-    a=0
+    start_of_window = -1
+    end_of_window = -1
     
-    for row_index, row in enumerate(data):
-        a+=1
-        
-        for i in range(5):
-            window = first_stim + i*915
-            if window - 100 < 0:
-                left = 0
-                right =window + 350 - first_stim
-            elif window + 250 > 4499:
-                left = window - 350 + (4499 - window)
-                right = 4500
-            else:
-                left = window - 100
-                right = window + 250
-            
-            area[row_index].append(auc(list(range(left, right)), list(data[row_index][left:right])))
-            
-            if left == 0:
-                rolling_trgt = 100 - first_stim
-                responses[row_index].append(np.roll(np.array(data[row_index][left:right]), rolling_trgt))
-            
-            elif right == 4499:
-                rolling_trgt = 4499 - window - 100
-                responses[row_index].append(np.roll(np.array(data[row_index][left:right]), rolling_trgt))
+    ''' scan over gaussian blurred data to find response windows then pull responses from raw data'''
+    for row_index, row in enumerate(blurred):
+    
+        threshold_to_start = (threshold_multiplier * statistics.stdev(row)) + statistics.mean(row)
+        threshold_to_end = (threshold_multiplier * statistics.stdev(row)) + statistics.mean(row)
+
+        for value_index, value in enumerate(row):
+            if start_of_window == -1: # If we don't have a starting point yet
+                if value >= threshold_to_start:  
+                    start_of_window = value_index
+                    #start_of_window_d = row.index(min(row[value_index - search_extension:value_index])) if value_index > search_extension else row.index(min(row[:value_index+1]))
+    
+            elif end_of_window == -1: # We have a starting point, now we're looking for the end of our window
+                if value <= threshold_to_end:
+                    end_of_window = value_index
+                    #end_of_window_d = row.index(min(row[value_index:value_index + search_extension])) if value_index < len(row) - search_extension else row.index(min(row[value_index-1:]))
+    
+            else: # We have a start and an end - find the max in this range
                 
-            else:
-                responses[row_index].append(data[row_index][left:right])
+                if len(data[row_index][start_of_window:end_of_window]) > 15:
+    
+                    peaks[row_index].append(max(data[row_index][start_of_window:end_of_window]))
                 
-            peaks[row_index].append(max(data[row_index][left:right]))
-            
-            times[row_index].append(data[row_index].index(max(data[row_index][left:right])) + 1)
-            
-            try:
-                thresholds[row_index].append(max(data[row_index][left-100:left]))
-            except:
-                thresholds[row_index].append(max(data[row_index][right:right+100]))
+                    area[row_index].append(auc(list(range(start_of_window, end_of_window)), list(data[row_index][start_of_window:end_of_window])))
+                
+                    times[row_index].append(data[row_index].index(max(data[row_index][start_of_window:end_of_window])) + 1)
+                    
+                    if start_of_window-15<0:
+                        responses[row_index].append(data[row_index][0 : end_of_window+15 + (15-start_of_window) ])
+                    elif end_of_window+15>len(data[row_index])-1:
+
+                        responses[row_index].append(data[row_index][start_of_window-15 - (15-len(data[row_index])-end_of_window):len(data[row_index])])
+                    else:
+                        responses[row_index].append(data[row_index][start_of_window-15:end_of_window+15])
+                        
+                    try:
+                        thresholds[row_index].append(max(data[row_index][start_of_window-100:start_of_window]))
+                    except:
+                        thresholds[row_index].append(max(data[row_index][end_of_window:end_of_window+100]))
+
+                start_of_window = -1
+                end_of_window = -1 
 
     return area, peaks, times, thresholds, responses
     
@@ -194,22 +227,8 @@ def output_csv(baselines, deltaf, area, peaks, times, thresholds, responses, out
                 writer.writerows([row])
                 
         with open(output_dir + 'data-peaks/' + recording_name + '_RESPONSES.npy', 'wb') as fn:
-            np.save(fn, np.array(responses), allow_pickle=True)
+            np.save(fn, np.array(responses, dtype=object), allow_pickle=True)
                 
-
-def thresh_filter_responses(resp_db, thresh_db): #response arrays should have a shape of cells*stims*time
-            
-    #remove cell responses where the max is less than the threshold        
-    for recording, cells in resp_db.items():
-        for cell, responses in enumerate(cells):
-            for response, trace in enumerate(responses):
-                if trace.max() < thresh_db[recording][cell][response]:
-                    resp_db[recording][cell][response] *= np.nan
-                    
-    fltrd_resp_db = resp_db
-    
-    return fltrd_resp_db
-
 
 def mean_stack(stacked):
     
@@ -230,6 +249,54 @@ def plot_averaged(meaned, title):
         plt.plot(i)
     plt.show()
 '''
+
+def pad(resp_db):
+    longest_resp_len = 0
+    most_responses =0
+    #remove cell responses where the max is less than the threshold        
+    for recording, cells in resp_db.items():
+        for cell, responses in enumerate(cells):
+            if len(responses)>most_responses:
+                    most_responses=len(responses)
+            for response, trace in enumerate(responses):
+                if len(trace)>longest_resp_len:
+                    longest_resp_len=len(trace)
+    
+    for recording, cells in resp_db.items():
+        for cell, responses in enumerate(cells):
+            for response, trace in enumerate(responses):
+                trace_pad_width = longest_resp_len-len(trace)
+                if trace_pad_width%2 != 0:
+                    resp_db[recording][cell][response] = np.pad(np.array(trace),pad_width = (math.floor(trace_pad_width/2), math.ceil(trace_pad_width/2)), mode = 'edge').tolist()
+                else:
+                    resp_db[recording][cell][response] = np.pad(np.array(trace),pad_width = int(trace_pad_width/2), mode = 'edge').tolist()
+                    
+            cell_pad_width = most_responses-len(responses)
+            if cell_pad_width%2 != 0:
+                resp_db[recording][cell] = np.pad(np.array(responses),pad_width = ( (math.floor(cell_pad_width/2), math.ceil(cell_pad_width/2)), (0,0) ), mode = 'constant', constant_values = np.nan)
+            else:
+                resp_db[recording][cell] = np.pad(np.array(responses), pad_width = ( ( int(cell_pad_width/2), int(cell_pad_width/2) ), (0,0) ), mode = 'constant', constant_values = np.nan)
+                
+    for recording, cells in resp_db.items():
+        resp_db[recording]=np.array(resp_db[recording])
+
+    return resp_db
+    
+
+def thresh_filter_responses(resp_db, thresh_db): #response arrays should have a shape of cells*stims*time
+            
+    #remove cell responses where the max is less than the threshold        
+    for recording, cells in resp_db.items():
+        for cell, responses in enumerate(cells):
+            for response, trace in enumerate(responses):
+                if max(trace, default = 0) < thresh_db[recording][cell][response]:
+                        resp_db[recording][cell][response] = np.array(resp_db[recording][cell][response])
+                        resp_db[recording][cell][response] *= np.nan
+
+    fltrd_resp_db = pad(resp_db)
+    
+    return fltrd_resp_db
+
 
 def group_by_treatment(resp_db, thresh_db):
     treatments = {"cap_and_train": ["21sep22", "22jun22", "26may22", "13aug22"], "cap_notrain": ["01apr23", "02feb23", "30mar23"],
@@ -297,57 +364,59 @@ def make_plots(grouped_by_treatment):#Function for ploting aligned and averaged 
     
     plot_averaged(grouped_by_treatment, time_list)
     
-def process_from_raw_traces(input_dir, output_dir, stims_timings):
+#def process_from_raw_traces(input_dir, output_dir):
+input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\'
+output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\new glia activity\\"
 
-    cell_type = "neurons" #neurons or glia
-    files =[f.path[:f.path.rfind('\\')+1] for i in glob.glob(f'{input_dir}/*/**/***/',recursive=True) for f in os.scandir(i) if f.path.endswith('tectal_neuron_iscell.npy') and "capapplication" not in f.path]
+cell_type = "glia" #neurons or glia
+files =[f.path[:f.path.rfind('\\')+1] for i in glob.glob(f'{input_dir}/*/**/***/',recursive=True) for f in os.scandir(i) if f.path.endswith('\iscell.npy') and "capapplication" not in f.path]
+
+resp_db = {}
+thresh_db = {}
+
+for file in files:
+    #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
+    recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group()
     
-    stims = pd.read_csv(stims_timings)
-    stims = stims.set_index("file")
+    #perform deltaF operation
+    try:
+        print("Normalizing " + file)
+        raw_trace = is_cell_responsive(file, recording_name, output_dir)
+        baselines = calculate_baselines(raw_trace)
+        deltaf = deltaF(raw_trace, baselines)
+    except Exception:
+        print(file + " contains no traces, so it was skipped!")
+        pass
     
-    resp_db = {}
-    thresh_db = {}
-    print(files)
-    for file in files:
-        #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
-        recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group()
+    #perform response metric operations 
+    try:
+        print("Extracting response metrics of " + file)
+        blurred = blur(deltaf, sigma = 5)
         
-        #perform deltaF operation
-        try:
-            print("Normalizing " + file)
-            raw_trace = is_cell_responsive(file, recording_name, output_dir)
-            baselines = calculate_baselines(raw_trace)
-            deltaf = deltaF(raw_trace, baselines)
-        except Exception:
-            print(file + " contains no traces, so it was skipped!")
-            pass
-        
-        #perform response metric operations 
-        try:
-            print("Extracting response metrics of " + file)
-            area, peaks, times, thresholds, responses = find_peaks_in_data(deltaf, stims, recording_name)
-        
-            #Save the data to files
-            output_csv(baselines, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name)
-            
-            #Agregate the responses and the thresholds then filter them and group them by experimental condition
-            resp_db[recording_name] = np.array(responses)
-            thresh_db[recording_name] = thresholds
-            
-        except KeyError:
-            print(file + " contains no responses, so it was skipped!")
-            pass
-        
-    grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
+        area, peaks, times, thresholds, responses = find_peaks_in_data(deltaf, blurred, recording_name, threshold_multiplier = 2)
     
-    #Write the grouped data to a txt file for use at another time
-    with open(output_dir + 'grouped_' + cell_type + '_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
-        pickle.dump(grouped_by_treatment, of)
+        #Save the data to files
+        output_csv(baselines, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name)
         
+        #Agregate the responses and the thresholds then filter them and group them by experimental condition
+        resp_db[recording_name] = responses
+        thresh_db[recording_name] = thresholds
+        
+    except KeyError:
+        print(file + " contains no responses, so it was skipped!")
+        pass
+    
+    
+grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
+    
+#Write the grouped data to a txt file for use at another time
+with open(output_dir + 'grouped_' + cell_type + '_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
+    pickle.dump(grouped_by_treatment, of)
+    
         
 def process_from_responses(input_dir, output_dir):
     
-    cell_type = "neurons" #neurons or glia
+    cell_type = "glia" #neurons or glia
     response_files =[f.path  for f in os.scandir(input_dir) if f.path.endswith('RESPONSES.npy')]  
     resp_db = {}
     thresh_db = {}
@@ -367,7 +436,9 @@ def process_from_responses(input_dir, output_dir):
         with open(output_dir + 'grouped_' + cell_type + '_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
             pickle.dump(grouped_by_treatment, of)
 
-#process_from_responses(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\max proj roi activity\\data-peaks\\', output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\")
-process_from_raw_traces(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\', output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\new max proj roi activity\\", stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/summaries/stim_timings.csv")
+#process_from_responses(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\max proj roi activity\\data-peaks\\',
+#                       output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\")
+#process_from_raw_traces(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\', 
+    #                    output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\new glia activity\\")
 
 

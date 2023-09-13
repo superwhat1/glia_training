@@ -108,6 +108,7 @@ def blur(data: list, sigma: int) -> list:
     F_blur:
         The blurred fluorenscence traces
    """
+   
     nd_data = np.array(data)
 
     #create array that has m = cell rows and n = time/2 columns.

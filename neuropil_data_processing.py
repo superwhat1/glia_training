@@ -77,15 +77,15 @@ def find_peaks_in_data(data, stim_times, animal):
 
     for i in range(5):
         window = first_stim + i*915
-        if window - 250 < 0:
+        if window - 175 < 0:
             left = 0
-            right =window + 500 - first_stim
-        elif window + 250 > 4500:
-            left = window - 500 + (4500 - window)
+            right =window + 350 - first_stim
+        elif window + 175 > 4500:
+            left = window - 350 + (4500 - window)
             right = 4500
         else:
-            left = window - 250
-            right = window + 250
+            left = window - 175
+            right = window + 175
             
         area.append(auc(list(range(left, right)), list(data[left:right])))
             
