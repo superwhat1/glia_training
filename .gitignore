@@ -3,6 +3,8 @@ functional\ roi\ activity/
 glia\ activity/
 max\ proj\ roi\ activity/
 neuropil\ activity/
+new\ glia\ activity/
+new\ max\ proj\ roi\ activity/
 .spyproject/
 *.csv
 *.xlsx
