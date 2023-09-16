@@ -151,24 +151,32 @@ def find_peaks_in_data(data, blurred, recording_name, threshold_multiplier):
                 
                     times[row_index].append(data[row_index].index(max(data[row_index][start_of_window:end_of_window])) + 1)
                     
-                    if start_of_window-15<0:
+                    if start_of_window-15<=0:
                         responses[row_index].append(data[row_index][0 : end_of_window+15 + (15-start_of_window) ])
-                    elif end_of_window+15>len(data[row_index])-1:
-
+                        
+                    elif end_of_window+15>=(len(data[row_index])-1):
                         responses[row_index].append(data[row_index][start_of_window-15 - (15-len(data[row_index])-end_of_window):len(data[row_index])])
+                        
                     else:
                         responses[row_index].append(data[row_index][start_of_window-15:end_of_window+15])
-                        
+                
                     try:
-                        thresholds[row_index].append(max(data[row_index][start_of_window-100:start_of_window]))
+                        thresholds[row_index].append(max(data[row_index][start_of_window-30:start_of_window-15]))
                     except:
-                        thresholds[row_index].append(max(data[row_index][end_of_window:end_of_window+100]))
+                        thresholds[row_index].append(max(data[row_index][end_of_window+15:end_of_window+30]))
 
                 start_of_window = -1
                 end_of_window = -1 
 
     return area, peaks, times, thresholds, responses
     
+
+def pad_thresholds(thresholds):
+    
+    padded_thresholds = thresholds
+    
+    return padded_thresholds
+
     
 def output_csv(baselines, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name):
       
@@ -250,11 +258,12 @@ def plot_averaged(meaned, title):
     plt.show()
 '''
 
-def pad(resp_db):
+def pad(to_pad):
     longest_resp_len = 0
     most_responses =0
-    #remove cell responses where the max is less than the threshold        
-    for recording, cells in resp_db.items():
+    
+    #find the longest response and the cell with the most responses       
+    for recording, cells in to_pad.items():
         for cell, responses in enumerate(cells):
             if len(responses)>most_responses:
                     most_responses=len(responses)
@@ -262,47 +271,66 @@ def pad(resp_db):
                 if len(trace)>longest_resp_len:
                     longest_resp_len=len(trace)
     
-    for recording, cells in resp_db.items():
+    for recording, cells in to_pad.items():
+        #print(recording)
         for cell, responses in enumerate(cells):
+            #print(cell)
             for response, trace in enumerate(responses):
                 trace_pad_width = longest_resp_len-len(trace)
                 if trace_pad_width%2 != 0:
-                    resp_db[recording][cell][response] = np.pad(np.array(trace),pad_width = (math.floor(trace_pad_width/2), math.ceil(trace_pad_width/2)), mode = 'edge').tolist()
+                    to_pad[recording][cell][response] = np.pad(np.array(trace),pad_width = (math.floor(trace_pad_width/2), math.ceil(trace_pad_width/2)), mode = 'edge').tolist()
                 else:
-                    resp_db[recording][cell][response] = np.pad(np.array(trace),pad_width = int(trace_pad_width/2), mode = 'edge').tolist()
+                    to_pad[recording][cell][response] = np.pad(np.array(trace),pad_width = int(trace_pad_width/2), mode = 'edge').tolist()
                     
             cell_pad_width = most_responses-len(responses)
             if cell_pad_width%2 != 0:
-                resp_db[recording][cell] = np.pad(np.array(responses),pad_width = ( (math.floor(cell_pad_width/2), math.ceil(cell_pad_width/2)), (0,0) ), mode = 'constant', constant_values = np.nan)
+                to_pad[recording][cell] = np.pad(np.array(responses),pad_width = ( (math.floor(cell_pad_width/2), math.ceil(cell_pad_width/2)), (0,0) ), mode = 'constant', constant_values = np.nan)
             else:
-                resp_db[recording][cell] = np.pad(np.array(responses), pad_width = ( ( int(cell_pad_width/2), int(cell_pad_width/2) ), (0,0) ), mode = 'constant', constant_values = np.nan)
+                #print(len(responses))
+                to_pad[recording][cell] = np.pad(np.array(responses), pad_width = ( ( int(cell_pad_width/2), int(cell_pad_width/2) ), (0,0) ), mode = 'constant', constant_values = np.nan)
                 
-    for recording, cells in resp_db.items():
-        resp_db[recording]=np.array(resp_db[recording])
-
-    return resp_db
+    for recording, cells in to_pad.items():
+        to_pad[recording]=np.array(to_pad[recording])
+    
+    return to_pad
     
 
-def thresh_filter_responses(resp_db, thresh_db): #response arrays should have a shape of cells*stims*time
-            
+def thresh_filter_responses(resp, thresh): #response arrays should have a shape of cells*stims*time
     #remove cell responses where the max is less than the threshold        
-    for recording, cells in resp_db.items():
+    for recording, cells in resp.items():
+        resp[recording]= [cell for cell in cells if cell]
+    for rec_thresh, cells_thresh in thresh.items():
+        thresh[rec_thresh]=[cell_thresholds for cell_thresholds in cells_thresh if cell_thresholds]
+    
+    for recording, cells in resp.items():
+        for cell, responses in enumerate(cells): 
+            resp[recording][cell] = [trace for trace in responses if trace]
+    for rec_thresh, cells_thresh in thresh.items():
+        for cell_thresh, resp_thresh in enumerate(cells_thresh):
+            thresh[rec_thresh][cell_thresh] = [threshold for threshold in resp_thresh if threshold]
+                
+    for recording, cells in resp.items():
+        print(recording)
         for cell, responses in enumerate(cells):
             for response, trace in enumerate(responses):
-                if max(trace, default = 0) < thresh_db[recording][cell][response]:
-                        resp_db[recording][cell][response] = np.array(resp_db[recording][cell][response])
-                        resp_db[recording][cell][response] *= np.nan
+                print(cell,response)
+                print(thresh[recording][cell][response])
+                if max(trace, default = 0) < thresh[recording][cell][response]:
+                    resp[recording][cell][response] = np.array(resp[recording][cell][response])
+                    resp[recording][cell][response] *= np.nan
+                    resp[recording][cell][response].tolist()
+                
 
-    fltrd_resp_db = pad(resp_db)
+    fltrd_resp_db = pad(resp)
     
     return fltrd_resp_db
 
 
-def group_by_treatment(resp_db, thresh_db):
+def group_by_treatment(resp_db_to_group, thresh_db_to_group):
     treatments = {"cap_and_train": ["21sep22", "22jun22", "26may22", "13aug22"], "cap_notrain": ["01apr23", "02feb23", "30mar23"],
     "nocap_train": ["07sep22", "15jun22", "20jul22", "27apr22"], "nocap_notrain":["19may23", "23aug23"]}
     
-    fltrd_resp_db = thresh_filter_responses(resp_db, thresh_db)
+    fltrd_resp_db = thresh_filter_responses(resp_db_to_group, thresh_db_to_group)
     
     grouped_by_treatment ={}
     
@@ -365,11 +393,12 @@ def make_plots(grouped_by_treatment):#Function for ploting aligned and averaged 
     plot_averaged(grouped_by_treatment, time_list)
     
 #def process_from_raw_traces(input_dir, output_dir):
+    
 input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\'
 output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\new glia activity\\"
 
 cell_type = "glia" #neurons or glia
-files =[f.path[:f.path.rfind('\\')+1] for i in glob.glob(f'{input_dir}/*/**/***/',recursive=True) for f in os.scandir(i) if f.path.endswith('\iscell.npy') and "capapplication" not in f.path]
+files =[f.path[:f.path.rfind('\\')+1] for i in glob.glob(f'{input_dir}/*/**/***/',recursive=True) for f in os.scandir(i) if f.path.endswith('\iscell.npy') and "capapplication" not in f.path and "min0" not in f.path]
 
 resp_db = {}
 thresh_db = {}
@@ -394,28 +423,28 @@ for file in files:
         blurred = blur(deltaf, sigma = 5)
         
         area, peaks, times, thresholds, responses = find_peaks_in_data(deltaf, blurred, recording_name, threshold_multiplier = 2)
-    
-        #Save the data to files
-        output_csv(baselines, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name)
         
         #Agregate the responses and the thresholds then filter them and group them by experimental condition
         resp_db[recording_name] = responses
         thresh_db[recording_name] = thresholds
+       
+        #Save the data to files
+        output_csv(baselines, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name)
         
     except KeyError:
         print(file + " contains no responses, so it was skipped!")
         pass
     
-    
 grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
     
+
 #Write the grouped data to a txt file for use at another time
 with open(output_dir + 'grouped_' + cell_type + '_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
     pickle.dump(grouped_by_treatment, of)
     
         
 def process_from_responses(input_dir, output_dir):
-    
+
     cell_type = "glia" #neurons or glia
     response_files =[f.path  for f in os.scandir(input_dir) if f.path.endswith('RESPONSES.npy')]  
     resp_db = {}
@@ -436,8 +465,8 @@ def process_from_responses(input_dir, output_dir):
         with open(output_dir + 'grouped_' + cell_type + '_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
             pickle.dump(grouped_by_treatment, of)
 
-#process_from_responses(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\max proj roi activity\\data-peaks\\',
-#                       output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\")
+#process_from_responses(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\new glia activity\\data-peaks\\',
+#                       output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\new glia activity\\")
 #process_from_raw_traces(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\', 
     #                    output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\new glia activity\\")
 
