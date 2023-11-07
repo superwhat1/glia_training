@@ -169,13 +169,6 @@ def find_peaks_in_data(data, blurred, recording_name, threshold_multiplier):
                 end_of_window = -1 
 
     return area, peaks, times, thresholds, responses
-    
-
-def pad_thresholds(thresholds):
-    
-    padded_thresholds = thresholds
-    
-    return padded_thresholds
 
     
 def output_csv(baselines, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name):
