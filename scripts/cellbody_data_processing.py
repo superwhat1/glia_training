@@ -11,8 +11,9 @@ import sys, subprocess
 try:
     import numpy as np
     import pandas as pd
-    import os, glob, csv, re
+    import os, glob, statistics, csv, re
     from sklearn.metrics import auc
+    import matplotlib.pyplot as plt
     import pickle
     from datetime import date
     from copy import deepcopy
@@ -106,7 +107,7 @@ def find_peaks_in_data(data, stims, recording_name):
                 right =window + 350 - first_stim
             elif window + 250 > 4499:
                 left = window - 350 + (4499 - window)
-                right = 4499
+                right = 4500
             else:
                 left = window - 100
                 right = window + 250
@@ -202,13 +203,33 @@ def thresh_filter_responses(resp_db, thresh_db): #response arrays should have a 
     for recording, cells in resp_db.items():
         for cell, responses in enumerate(cells):
             for response, trace in enumerate(responses):
-                if max(trace) < thresh_db[recording][cell][response]:
+                if trace.max() < thresh_db[recording][cell][response]:
                     resp_db[recording][cell][response] *= np.nan
                     
     fltrd_resp_db = resp_db
     
     return fltrd_resp_db
 
+
+def mean_stack(stacked):
+    
+    meaned = np.nanmean(stacked, axis=0, dtype = np.float64)
+    
+    return  meaned
+
+'''
+def plot_averaged(meaned, title):
+    
+    plt.figure(figsize=(20,6))
+    position = 150
+    for i in meaned:
+        position+=1
+        plt.subplot(position)
+        plt.suptitle(title)
+        plt.ylim(0,1.5)
+        plt.plot(i)
+    plt.show()
+'''
 
 def group_by_treatment(resp_db, thresh_db):
     treatments = {"cap_and_train": ["21sep22", "22jun22", "26may22", "13aug22"], "cap_notrain": ["01apr23", "02feb23", "30mar23"],
@@ -232,9 +253,52 @@ def group_by_treatment(resp_db, thresh_db):
             
     return grouped_by_treatment  
 
+
+#Function for ploting aligned and averaged responses
+def plot_averaged(grouped_by_treatment, time_list):
+    
+    base_min = {}
+    base_max = {}
+    ready_to_plot = {}
+    
+    for i in time_list:
+        ready_to_plot[i] = {}
+        for treatment, animals in grouped_by_treatment.items():
+            if treatment != "cap_notrain":
+                to_stack = []
+                for animal, times in animals.items():    
+                    for time, cells in times.items():
+                        for traces in cells:
+                            if i in time:
+                                to_stack.append(traces)
+                                
+                stacked = np.stack(to_stack)
+                meaned = mean_stack(stacked)
+                meaned_again = mean_stack(meaned)
+                
+                if i == 'min15':
+                    base_min[treatment] = meaned_again.min()
+                    base_max[treatment] = meaned_again.max()
+                normalized = (meaned_again - base_min[treatment])/ (base_max[treatment] - base_min[treatment])
+                ready_to_plot[i][treatment]=normalized
+                
+                title = treatment + i
+                plt.title(title)
+                plt.plot(normalized)
+                plt.ylim(0,1.5)
+        
+        plt.show()
+
+
+def make_plots(grouped_by_treatment):#Function for ploting aligned and averaged responses
+
+    #Prepare variables needed to plot average traces
+    time_list=['min15', 'min45', 'min60', 'min80', 'min100']
+    
+    plot_averaged(grouped_by_treatment, time_list)
     
 def process_from_raw_traces(input_dir, output_dir, stims_timings):
-    
+
     cell_type = "neurons" #neurons or glia
     files =[f.path[:f.path.rfind('\\')+1] for i in glob.glob(f'{input_dir}/*/**/***/',recursive=True) for f in os.scandir(i) if f.path.endswith('tectal_neuron_iscell.npy') and "capapplication" not in f.path]
     
@@ -243,6 +307,7 @@ def process_from_raw_traces(input_dir, output_dir, stims_timings):
     
     resp_db = {}
     thresh_db = {}
+    print(files)
     for file in files:
         #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
         recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group()
@@ -273,7 +338,7 @@ def process_from_raw_traces(input_dir, output_dir, stims_timings):
             print(file + " contains no responses, so it was skipped!")
             pass
         
-    grouped_by_treatment = group_by_treatment(resp_db, thresh_db )
+    grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
     
     #Write the grouped data to a txt file for use at another time
     with open(output_dir + 'grouped_' + cell_type + '_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
@@ -296,13 +361,13 @@ def process_from_responses(input_dir, output_dir):
         #Agregate the responses and the thresholds then filter them and group them by experimental condition
         resp_db[recording_name] = responses
         thresh_db[recording_name] = thresholds
-    grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
+        grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
         
-    #Write the grouped data to a txt file for use at another time
-    with open(output_dir + 'grouped_' + cell_type + '_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
-        pickle.dump(grouped_by_treatment, of)
+        #Write the grouped data to a txt file for use at another time
+        with open(output_dir + 'grouped_' + cell_type + '_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
+            pickle.dump(grouped_by_treatment, of)
 
 #process_from_responses(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\max proj roi activity\\data-peaks\\', output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\")
-process_from_raw_traces(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\', output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\max proj roi activity\\", stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/summaries/stim_timings.csv")
+process_from_raw_traces(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\', output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\new max proj roi activity\\", stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/summaries/stim_timings.csv")
 
 

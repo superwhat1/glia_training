@@ -13,6 +13,7 @@ try:
     import pandas as pd
     import os, glob, statistics, csv, re
     from sklearn.metrics import auc
+    import matplotlib.pyplot as plt
     import pickle
     from datetime import date
     from copy import deepcopy
@@ -168,6 +169,13 @@ def find_peaks_in_data(data, blurred, recording_name, threshold_multiplier):
                 end_of_window = -1 
 
     return area, peaks, times, thresholds, responses
+    
+
+def pad_thresholds(thresholds):
+    
+    padded_thresholds = thresholds
+    
+    return padded_thresholds
 
     
 def output_csv(baselines, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name):
@@ -236,6 +244,19 @@ def mean_stack(stacked):
     
     return  meaned
 
+'''
+def plot_averaged(meaned, title):
+    
+    plt.figure(figsize=(20,6))
+    position = 150
+    for i in meaned:
+        position+=1
+        plt.subplot(position)
+        plt.suptitle(title)
+        plt.ylim(0,1.5)
+        plt.plot(i)
+    plt.show()
+'''
 
 def pad(to_pad):
     longest_resp_len = 0
@@ -289,13 +310,17 @@ def thresh_filter_responses(resp, thresh): #response arrays should have a shape 
             thresh[rec_thresh][cell_thresh] = [threshold for threshold in resp_thresh if threshold]
                 
     for recording, cells in resp.items():
+        print(recording)
         for cell, responses in enumerate(cells):
             for response, trace in enumerate(responses):
+                print(cell,response)
+                print(thresh[recording][cell][response])
                 if max(trace, default = 0) < thresh[recording][cell][response]:
                     resp[recording][cell][response] = np.array(resp[recording][cell][response])
                     resp[recording][cell][response] *= np.nan
                     resp[recording][cell][response].tolist()
                 
+
     fltrd_resp_db = pad(resp)
     
     return fltrd_resp_db
@@ -323,53 +348,99 @@ def group_by_treatment(resp_db_to_group, thresh_db_to_group):
             
     return grouped_by_treatment  
 
-    
-def process_from_raw_traces(input_dir, output_dir):  
 
-    cell_type = "glia" #neurons or glia
-    files =[f.path[:f.path.rfind('\\')+1] for i in glob.glob(f'{input_dir}/*/**/***/',recursive=True) for f in os.scandir(i) if f.path.endswith('\iscell.npy') and "capapplication" not in f.path and "min0" not in f.path]
+#Function for ploting aligned and averaged responses
+def plot_averaged(grouped_by_treatment, time_list):
     
-    resp_db = {}
-    thresh_db = {}
+    base_min = {}
+    base_max = {}
+    ready_to_plot = {}
     
-    for file in files:
-        #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
-        recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group()
+    for i in time_list:
+        ready_to_plot[i] = {}
+        for treatment, animals in grouped_by_treatment.items():
+            if treatment != "cap_notrain":
+                to_stack = []
+                for animal, times in animals.items():    
+                    for time, cells in times.items():
+                        for traces in cells:
+                            if i in time:
+                                to_stack.append(traces)
+                                
+                stacked = np.stack(to_stack)
+                meaned = mean_stack(stacked)
+                meaned_again = mean_stack(meaned)
+                
+                if i == 'min15':
+                    base_min[treatment] = meaned_again.min()
+                    base_max[treatment] = meaned_again.max()
+                normalized = (meaned_again - base_min[treatment])/ (base_max[treatment] - base_min[treatment])
+                ready_to_plot[i][treatment]=normalized
+                
+                title = treatment + i
+                plt.title(title)
+                plt.plot(normalized)
+                plt.ylim(0,1.5)
         
-        #perform deltaF operation
-        try:
-            print("Normalizing " + file)
-            raw_trace = is_cell_responsive(file, recording_name, output_dir)
-            baselines = calculate_baselines(raw_trace)
-            deltaf = deltaF(raw_trace, baselines)
-        except Exception:
-            print(file + " contains no traces, so it was skipped!")
-            pass
-        
-        #perform response metric operations 
-        try:
-            print("Extracting response metrics of " + file)
-            blurred = blur(deltaf, sigma = 5)
-            
-            area, peaks, times, thresholds, responses = find_peaks_in_data(deltaf, blurred, recording_name, threshold_multiplier = 2)
-            
-            #Agregate the responses and the thresholds then filter them and group them by experimental condition
-            resp_db[recording_name] = responses
-            thresh_db[recording_name] = thresholds
-           
-            #Save the data to files
-            output_csv(baselines, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name)
-            
-        except KeyError:
-            print(file + " contains no responses, so it was skipped!")
-            pass
-        
-    grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
-        
+        plt.show()
 
-    #Write the grouped data to a txt file for use at another time
-    with open(output_dir + 'grouped_' + cell_type + '_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
-        pickle.dump(grouped_by_treatment, of)
+
+def make_plots(grouped_by_treatment):#Function for ploting aligned and averaged responses
+
+    #Prepare variables needed to plot average traces
+    time_list=['min15', 'min45', 'min60', 'min80', 'min100']
+    
+    plot_averaged(grouped_by_treatment, time_list)
+    
+#def process_from_raw_traces(input_dir, output_dir):
+    
+input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\'
+output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\new glia activity\\"
+
+cell_type = "glia" #neurons or glia
+files =[f.path[:f.path.rfind('\\')+1] for i in glob.glob(f'{input_dir}/*/**/***/',recursive=True) for f in os.scandir(i) if f.path.endswith('\iscell.npy') and "capapplication" not in f.path and "min0" not in f.path]
+
+resp_db = {}
+thresh_db = {}
+
+for file in files:
+    #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
+    recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group()
+    
+    #perform deltaF operation
+    try:
+        print("Normalizing " + file)
+        raw_trace = is_cell_responsive(file, recording_name, output_dir)
+        baselines = calculate_baselines(raw_trace)
+        deltaf = deltaF(raw_trace, baselines)
+    except Exception:
+        print(file + " contains no traces, so it was skipped!")
+        pass
+    
+    #perform response metric operations 
+    try:
+        print("Extracting response metrics of " + file)
+        blurred = blur(deltaf, sigma = 5)
+        
+        area, peaks, times, thresholds, responses = find_peaks_in_data(deltaf, blurred, recording_name, threshold_multiplier = 2)
+        
+        #Agregate the responses and the thresholds then filter them and group them by experimental condition
+        resp_db[recording_name] = responses
+        thresh_db[recording_name] = thresholds
+       
+        #Save the data to files
+        output_csv(baselines, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name)
+        
+    except KeyError:
+        print(file + " contains no responses, so it was skipped!")
+        pass
+    
+grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
+    
+
+#Write the grouped data to a txt file for use at another time
+with open(output_dir + 'grouped_' + cell_type + '_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
+    pickle.dump(grouped_by_treatment, of)
     
         
 def process_from_responses(input_dir, output_dir):
@@ -388,13 +459,15 @@ def process_from_responses(input_dir, output_dir):
         #Agregate the responses and the thresholds then filter them and group them by experimental condition
         resp_db[recording_name] = responses
         thresh_db[recording_name] = thresholds
-    grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
-    
-    #Write the grouped data to a txt file for use at another time
-    with open(output_dir + 'grouped_' + cell_type + '_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
-        pickle.dump(grouped_by_treatment, of)
+        grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
+        
+        #Write the grouped data to a txt file for use at another time
+        with open(output_dir + 'grouped_' + cell_type + '_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
+            pickle.dump(grouped_by_treatment, of)
 
 #process_from_responses(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\new glia activity\\data-peaks\\',
 #                       output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\new glia activity\\")
-process_from_raw_traces(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\', 
-                        output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\new glia activity\\")
+#process_from_raw_traces(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\', 
+    #                    output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\new glia activity\\")
+
+

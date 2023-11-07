@@ -11,8 +11,9 @@ import sys, subprocess
 try:
     import numpy as np
     import pandas as pd
-    import os, csv, re
+    import os, glob, statistics, csv, re
     from sklearn.metrics import auc
+    import matplotlib as plt
     import pickle
     from datetime import date
     
@@ -76,15 +77,15 @@ def find_peaks_in_data(data, stim_times, animal):
 
     for i in range(5):
         window = first_stim + i*915
-        if window - 100 < 0:
+        if window - 175 < 0:
             left = 0
             right =window + 350 - first_stim
-        elif window + 250 > 4099:
-            left = window - 350 + (4499 - window)
-            right = 4499
+        elif window + 175 > 4500:
+            left = window - 350 + (4500 - window)
+            right = 4500
         else:
-            left = window - 100
-            right = window + 250
+            left = window - 175
+            right = window + 175
             
         area.append(auc(list(range(left, right)), list(data[left:right])))
             
@@ -151,9 +152,11 @@ def thresh_filter_responses(resp_db, thresh_db): #response arrays should have a 
     for recording, responses in resp_db.items():
         for i in range(len(responses)):
             if responses[i].max() < thresh_db[recording][i]:
-                resp_db[recording][i] *= np.nan    
+                resp_db[recording][i] *= np.nan
+                
+    fltrd_resp_db = resp_db
     
-    return resp_db
+    return fltrd_resp_db
 
 
 def mean_stack(stacked):
@@ -162,6 +165,19 @@ def mean_stack(stacked):
     
     return  meaned
 
+'''
+def plot_averaged(meaned, title):
+    
+    plt.figure(figsize=(20,6))
+    position = 150
+    for i in meaned:
+        position+=1
+        plt.subplot(position)
+        plt.suptitle(title)
+        plt.ylim(0,1.5)
+        plt.plot(i)
+    plt.show()
+'''
 
 def group_by_treatment(resp_db, thresh_db):
     treatments = {"cap_and_train": ["21sep22", "22jun22", "26may22", "13aug22"], "cap_notrain": ["01apr23", "02feb23", "30mar23"],
@@ -186,10 +202,55 @@ def group_by_treatment(resp_db, thresh_db):
     return grouped_by_treatment  
 
 
-def process_from_raw_traces(input_dir, output_dir, stims_timings):
-    #Run data processing
-    files =[f.path for f in os.scandir(input_dir) if f.path.endswith('.csv') and "capapplication" not in f.path and "min0" not in f.path]
+#Function for ploting aligned and averaged responses
+def plot_averaged(grouped_by_treatment, time_list):
+
+    base_min = {}
+    base_max = {}
+    ready_to_plot = {}
     
+    for i in time_list:
+        ready_to_plot[i] = {}
+        for treatment, animals in grouped_by_treatment.items():
+            if treatment != "cap_notrain":
+                to_stack = []
+                for animal, times in animals.items():    
+                    for time, trace in times.items():    
+                        if i in time:
+                            to_stack.append(trace)
+                            
+                stacked = np.stack(to_stack)
+                meaned = mean_stack(stacked)
+                meaned_again = mean_stack(meaned)
+                
+                if i == 'min15':
+                    base_min[treatment] = meaned_again.min()
+                    base_max[treatment] = meaned_again.max()
+                    
+                normalized = (meaned_again - base_min[treatment])/ (base_max[treatment] - base_min[treatment])
+                title = treatment + i
+                plt.title(title)
+                plt.plot(normalized)
+                plt.ylim(0,1.1)
+                
+        plt.show()
+        
+        
+def make_plots(grouped_by_treatment):
+    
+    #Prepare variables needed to plot average traces    
+    time_list=['min15', 'min45', 'min60', 'min80', 'min100']
+    
+    plot_averaged(grouped_by_treatment, time_list)
+ 
+    
+def process_from_raw_traces():
+    #Run data processing
+    input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\neuropil activity\\raw'
+    files =[i.path for i in os.scandir(input_dir) if i.path.endswith('.csv')]
+    output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\neuropil activity\\"
+    
+    stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/summaries/stim_timings.csv"
     stims = pd.read_csv(stims_timings)
     stims = stims.set_index("file")
     
@@ -227,9 +288,11 @@ def process_from_raw_traces(input_dir, output_dir, stims_timings):
         pickle.dump(grouped_by_treatment, of)
     
 
-def process_from_responses(input_dir, output_dir):
+def process_from_responses():
     
+    input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\neuropil activity\\data-peaks'
     response_files =[f.path  for f in os.scandir(input_dir) if f.path.endswith('RESPONSES.npy')]
+    output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\neuropil activity\\"
     
     resp_db = {}
     thresh_db = {}
@@ -251,6 +314,14 @@ def process_from_responses(input_dir, output_dir):
         pickle.dump(grouped_by_treatment, of)
 
 #process_from_responses()
-process_from_raw_traces(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\neuropil activity\\data-peaks\\', output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\neuropil activity\\", stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/summaries/stim_timings.csv")
+process_from_raw_traces()
 
-#grouped_by_treatment = pickle.load(open("C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/analysis/neuropil activity/grouped_neuropil_responses_by_treatment2023-08-16.pkl",'rb'))
+'''
+grouped_by_treatment = pickle.load(open("C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/analysis/neuropil activity/grouped_neuropil_responses_by_treatment2023-08-16.pkl",'rb'))
+'''
+
+
+
+
+
+
