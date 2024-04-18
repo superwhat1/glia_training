@@ -17,11 +17,12 @@ try:
     import pickle
     from datetime import date
     from copy import deepcopy
+    from scipy.signal import sosfiltfilt, butter
     
 except ImportError as e:
     package = re.search("\'.+\'", str(e)).group()[1:-1]
     print(package + " not installed")
-    subprocess.check_call([sys.executable, '-m', 'pip', 'install', package])
+    subprocess.check_call([sys.executable, '-m', 'conda', 'install', package])
 
 
 def is_cell_responsive(file, recording_name, output_dir):
@@ -39,10 +40,17 @@ def is_cell_responsive(file, recording_name, output_dir):
     
     return F_fltrd
 
+def lowpass(data):
+    passed = np.zeros(data.shape)
+    sos = butter(4,1, "lowpass", output='sos',fs='15',analog=False)
+    for idx, trace in enumerate(data):
+        passed[idx] = sosfiltfilt(sos,trace)
+    return passed
 
 def calculate_baselines(data, percentile=7.5):
 
-    window_size = 150
+    pre_window_size = 50
+    post_window_size = 60
     baselines = [[] for i in range(len(data[0:]))]
 
     for cell, frames in enumerate(data): # One cell at a time
@@ -50,8 +58,8 @@ def calculate_baselines(data, percentile=7.5):
         for frame, value in enumerate(frames): # One frame at a time
 
             # Get the index for window/2 before and after frame
-            before = frame - (window_size / 2) if (frame > window_size / 2) else 0
-            after = frame + (window_size / 2) if (frame + (window_size / 2)) < (len(frames) - 1) else len(frames) - 1
+            before = frame - (pre_window_size) if (frame > pre_window_size) else 0
+            after = frame + (post_window_size) if (frame + post_window_size) < (len(frames) - 1) else len(frames) - 1
 
             #create the sliding window from the values of column with before and after indexes
             window = frames[int(before):int(after)]
@@ -94,32 +102,30 @@ def find_peaks_in_data(data, stims, recording_name):
     area = [[] for i in range(len(data))]
     responses = [[] for i in range(len(data))]
     thresholds = [[] for i in range(len(data))]
-    first_stim = stims.at[recording_name, "first stim"]
-    a=0
+    first_stim = stims.at[recording_name, "stim 1"]
     
     for row_index, row in enumerate(data):
-        a+=1
         
         for i in range(5):
             window = first_stim + i*915
-            if window - 100 < 0:
+            if window - 15 < 0:
                 left = 0
-                right =window + 350 - first_stim
-            elif window + 250 > 4499:
-                left = window - 350 + (4499 - window)
-                right = 4500
+                right =window + 165 - first_stim
+            elif window + 150 > 4499:
+                left = window - 165 + (4499 - window)
+                right = 4499
             else:
-                left = window - 100
-                right = window + 250
+                left = window - 15
+                right = window + 150
             
             area[row_index].append(auc(list(range(left, right)), list(data[row_index][left:right])))
             
             if left == 0:
-                rolling_trgt = 100 - first_stim
+                rolling_trgt = 15 - first_stim
                 responses[row_index].append(np.roll(np.array(data[row_index][left:right]), rolling_trgt))
             
             elif right == 4499:
-                rolling_trgt = 4499 - window - 100
+                rolling_trgt = 4499 - window - 15
                 responses[row_index].append(np.roll(np.array(data[row_index][left:right]), rolling_trgt))
                 
             else:
@@ -217,19 +223,6 @@ def mean_stack(stacked):
     
     return  meaned
 
-'''
-def plot_averaged(meaned, title):
-    
-    plt.figure(figsize=(20,6))
-    position = 150
-    for i in meaned:
-        position+=1
-        plt.subplot(position)
-        plt.suptitle(title)
-        plt.ylim(0,1.5)
-        plt.plot(i)
-    plt.show()
-'''
 
 def group_by_treatment(resp_db, thresh_db):
     treatments = {"cap_and_train": ["21sep22", "22jun22", "26may22", "13aug22"], "cap_notrain": ["01apr23", "02feb23", "30mar23"],
@@ -251,7 +244,7 @@ def group_by_treatment(resp_db, thresh_db):
             kv = dict(zip(kl,vl))
             grouped_by_treatment[treatment][experiment] = kv
             
-    return grouped_by_treatment  
+    return grouped_by_treatment
 
 
 #Function for ploting aligned and averaged responses
@@ -264,7 +257,7 @@ def plot_averaged(grouped_by_treatment, time_list):
     for i in time_list:
         ready_to_plot[i] = {}
         for treatment, animals in grouped_by_treatment.items():
-            if treatment != "cap_notrain":
+            if treatment =="nocap_train":
                 to_stack = []
                 for animal, times in animals.items():    
                     for time, cells in times.items():
@@ -282,10 +275,32 @@ def plot_averaged(grouped_by_treatment, time_list):
                 normalized = (meaned_again - base_min[treatment])/ (base_max[treatment] - base_min[treatment])
                 ready_to_plot[i][treatment]=normalized
                 
-                title = treatment + i
-                plt.title(title)
-                plt.plot(normalized)
+                plt.title(i)
+                plt.plot(normalized,"b-", label=treatment)
                 plt.ylim(0,1.5)
+                
+            elif treatment == "cap_and_train":
+                to_stack = []
+                for animal, times in animals.items():    
+                    for time, cells in times.items():
+                        for traces in cells:
+                            if i in time:
+                                to_stack.append(traces)
+                                
+                stacked = np.stack(to_stack)
+                meaned = mean_stack(stacked)
+                meaned_again = mean_stack(meaned)
+                
+                if i == 'min15':
+                    base_min[treatment] = meaned_again.min()
+                    base_max[treatment] = meaned_again.max()
+                normalized = (meaned_again - base_min[treatment])/ (base_max[treatment] - base_min[treatment])
+                ready_to_plot[i][treatment]=normalized
+                
+                plt.title(i)
+                plt.plot(normalized,"r-", label=treatment)
+                plt.ylim(0,1.5)
+        plt.legend(loc="best")
         
         plt.show()
 
@@ -299,7 +314,6 @@ def make_plots(grouped_by_treatment):#Function for ploting aligned and averaged 
     
 def process_from_raw_traces(input_dir, output_dir, stims_timings):
 
-    cell_type = "neurons" #neurons or glia
     files =[f.path[:f.path.rfind('\\')+1] for i in glob.glob(f'{input_dir}/*/**/***/',recursive=True) for f in os.scandir(i) if f.path.endswith('tectal_neuron_iscell.npy') and "capapplication" not in f.path]
     
     stims = pd.read_csv(stims_timings)
@@ -341,13 +355,12 @@ def process_from_raw_traces(input_dir, output_dir, stims_timings):
     grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
     
     #Write the grouped data to a txt file for use at another time
-    with open(output_dir + 'grouped_' + cell_type + '_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
+    with open(output_dir + 'grouped_neurons' + '_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
         pickle.dump(grouped_by_treatment, of)
         
         
 def process_from_responses(input_dir, output_dir):
     
-    cell_type = "neurons" #neurons or glia
     response_files =[f.path  for f in os.scandir(input_dir) if f.path.endswith('RESPONSES.npy')]  
     resp_db = {}
     thresh_db = {}
@@ -364,10 +377,14 @@ def process_from_responses(input_dir, output_dir):
         grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
         
         #Write the grouped data to a txt file for use at another time
-        with open(output_dir + 'grouped_' + cell_type + '_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
+        with open(output_dir + 'grouped_neurons' + '_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
             pickle.dump(grouped_by_treatment, of)
 
-#process_from_responses(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\max proj roi activity\\data-peaks\\', output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\")
-process_from_raw_traces(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\', output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\new max proj roi activity\\", stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/summaries/stim_timings.csv")
+#process_from_responses(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia projects\\plasticity\\analysis\\max proj roi activity\\data-peaks\\', output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia projects\\plasticity\\analysis\\")
+process_from_raw_traces(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia projects\\plasticity\\data\\', output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia projects\\plasticity\\analysis\\new max proj roi activity\\", stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia projects/plasticity/summaries/stim_timings.csv")
 
+#access roi location to match based on position
+#for roi in iscell:
+#    stat[roi]["med"]
 
+    

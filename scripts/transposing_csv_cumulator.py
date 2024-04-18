@@ -5,14 +5,13 @@ Created on Wed Jul 13 19:35:50 2022
 @author: BioCraze
 """
 import csv
-import os
-
+import glob
 import pandas as pd
 
 #files = [i for i in os.listdir("C:/Users/BioCraze/Documents/Ruthazer lab/glial training/scripts/data/data-peaks/") if i.endswith('neuropil.csv')]
-rootdir = 'D:\\washout data\\'
+rootdir = "C:\\Users\\BioCraze\\Documents\\Ruthazer lab\\glia projects\\plasticity\\analysis\\neuropil activity\\raw\\"
 
-files =[f.path for f in os.scandir(rootdir) if f.path.endswith('.csv')]
+files =[f for f in glob.glob(f'{rootdir}\**', recursive=True) if f.endswith('.csv')]
 
 cumulative = []
 for file in files:
@@ -25,7 +24,7 @@ for file in files:
     #write_to = csv.writer(new_csv)
     #write_to.writerow(data_list)
     #new_csv.close()
-new_csv = open("C:\\Users\\David\\Documents\\Ruthazer lab\\glia_training\\analysis\\washout data.csv",'w',newline='')
+new_csv = open("C:\\Users\\BioCraze\\Documents\\Ruthazer lab\\glia projects\\plasticity\\analysis\\neuropil activity\\cumululated_neuropil.csv",'w',newline='')
 write_to = csv.writer(new_csv)
 for row in cumulative:
     write_to.writerows([row])

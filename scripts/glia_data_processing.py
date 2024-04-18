@@ -30,7 +30,7 @@ def is_cell_responsive(file, recording_name, output_dir):
     
     #Set folder path and then use it to open the iscell with shape: two columns, first contains 0 or 1 depending on if ROI is a cell and second the probability of that ROI of being a cell according to the suite2p classifier. 
     #And to open F.npy containing an array of fluorescent trace arrays
-    is_cell = np.load(file + 'iscell.npy', allow_pickle=True)
+    is_cell = np.load(file + 'glia_iscell.npy', allow_pickle=True)
     F = np.load(file + 'F.npy',allow_pickle=True)
 
     #create array of traces containing only the ROIs that are cells according to iscell 
@@ -65,7 +65,6 @@ def calculate_baselines(data, percentile=7.5):
             baselines[cell].append(np.percentile(window, percentile))
 
     return baselines
-
 
 def deltaF(data, baselines):
 
@@ -303,11 +302,8 @@ def thresh_filter_responses(resp, thresh): #response arrays should have a shape 
             thresh[rec_thresh][cell_thresh] = [threshold for threshold in resp_thresh if threshold]
                 
     for recording, cells in resp.items():
-        print(recording)
         for cell, responses in enumerate(cells):
             for response, trace in enumerate(responses):
-                print(cell,response)
-                print(thresh[recording][cell][response])
                 if max(trace, default = 0) < thresh[recording][cell][response]:
                     resp[recording][cell][response] = np.array(resp[recording][cell][response])
                     resp[recording][cell][response] *= np.nan
@@ -387,11 +383,10 @@ def make_plots(grouped_by_treatment):#Function for ploting aligned and averaged 
     
 #def process_from_raw_traces(input_dir, output_dir):
     
-input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\'
-output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\new glia activity\\"
+input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia projects\\plasticity\\data\\'
+output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia projects\\plasticity\\analysis\\new glia activity\\"
 
-cell_type = "glia" #neurons or glia
-files =[f.path[:f.path.rfind('\\')+1] for i in glob.glob(f'{input_dir}/*/**/***/',recursive=True) for f in os.scandir(i) if f.path.endswith('\iscell.npy') and "capapplication" not in f.path and "min0" not in f.path]
+files =[f.path[:f.path.rfind('\\')+1] for i in glob.glob(f'{input_dir}/*/**/***/',recursive=True) for f in os.scandir(i) if f.path.endswith('glia_iscell.npy') and "capapplication" not in f.path]
 
 resp_db = {}
 thresh_db = {}
@@ -401,14 +396,14 @@ for file in files:
     recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group()
     
     #perform deltaF operation
-    try:
-        print("Normalizing " + file)
-        raw_trace = is_cell_responsive(file, recording_name, output_dir)
-        baselines = calculate_baselines(raw_trace)
-        deltaf = deltaF(raw_trace, baselines)
-    except Exception:
-        print(file + " contains no traces, so it was skipped!")
-        pass
+    #try:
+    print("Normalizing " + file)
+    raw_trace = is_cell_responsive(file, recording_name, output_dir)
+    baselines = calculate_baselines(raw_trace)
+    deltaf = deltaF(raw_trace, baselines)
+    #except Exception:
+     #   print(file + " contains no traces, so it was skipped!")
+      #  pass
     
     #perform response metric operations 
     try:
@@ -432,13 +427,12 @@ grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
     
 
 #Write the grouped data to a txt file for use at another time
-with open(output_dir + 'grouped_' + cell_type + '_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
+with open(output_dir + 'grouped_glia_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
     pickle.dump(grouped_by_treatment, of)
     
         
 def process_from_responses(input_dir, output_dir):
 
-    cell_type = "glia" #neurons or glia
     response_files =[f.path  for f in os.scandir(input_dir) if f.path.endswith('RESPONSES.npy')]  
     resp_db = {}
     thresh_db = {}
@@ -455,7 +449,7 @@ def process_from_responses(input_dir, output_dir):
         grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
         
         #Write the grouped data to a txt file for use at another time
-        with open(output_dir + 'grouped_' + cell_type + '_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
+        with open(output_dir + 'grouped_glia_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
             pickle.dump(grouped_by_treatment, of)
 
 #process_from_responses(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\new glia activity\\data-peaks\\',

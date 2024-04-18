@@ -290,9 +290,9 @@ def process_from_raw_traces():
 
 def process_from_responses():
     
-    input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\neuropil activity\\data-peaks'
+    input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia project\\plasticity\\analysis\\neuropil activity\\data-peaks'
     response_files =[f.path  for f in os.scandir(input_dir) if f.path.endswith('RESPONSES.npy')]
-    output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\neuropil activity\\"
+    output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia projects\\plasticity\\analysis\\neuropil activity\\"
     
     resp_db = {}
     thresh_db = {}
@@ -313,8 +313,8 @@ def process_from_responses():
     with open(output_dir + 'grouped_neuropil_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
         pickle.dump(grouped_by_treatment, of)
 
-#process_from_responses()
-process_from_raw_traces()
+process_from_responses()
+#process_from_raw_traces()
 
 '''
 grouped_by_treatment = pickle.load(open("C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/analysis/neuropil activity/grouped_neuropil_responses_by_treatment2023-08-16.pkl",'rb'))
