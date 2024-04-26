@@ -29,7 +29,7 @@ def is_cell_responsive(file, recording_name, output_dir):
     
     #Set folder path and then use it to open the iscell with shape: two columns, first contains 0 or 1 depending on if ROI is a cell and second the probability of that ROI of being a cell according to the suite2p classifier. 
     #And to open F.npy containing an array of fluorescent trace arrays
-    is_cell = np.load(file + 'iscell.npy', allow_pickle=True)
+    is_cell = np.load(file + 'tectal_neuron_iscell.npy', allow_pickle=True)
     F = np.load(file + 'F.npy',allow_pickle=True)
 
     #create array of traces containing only the ROIs that are cells according to iscell 
@@ -381,7 +381,7 @@ def process_from_responses(input_dir, output_dir):
             pickle.dump(grouped_by_treatment, of)
 
 #process_from_responses(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia projects\\plasticity\\analysis\\max proj roi activity\\data-peaks\\', output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia projects\\plasticity\\analysis\\")
-process_from_raw_traces(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia projects\\plasticity\\data\\', output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia projects\\plasticity\\analysis\\new max proj roi activity\\", stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia projects/plasticity/summaries/stim_timings.csv")
+process_from_raw_traces(input_dir = "E:/glia projects/plasticity/data", output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia projects\\plasticity\\analysis\\new max proj roi activity\\", stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia projects/plasticity/summaries/stim_timings.csv")
 
 #access roi location to match based on position
 #for roi in iscell:
