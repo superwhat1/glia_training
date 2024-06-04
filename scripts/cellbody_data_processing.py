@@ -257,7 +257,7 @@ def plot_averaged(grouped_by_treatment, time_list):
     for i in time_list:
         ready_to_plot[i] = {}
         for treatment, animals in grouped_by_treatment.items():
-            if treatment =="nocap_train":
+            if treatment =="nocap_notrain":
                 to_stack = []
                 for animal, times in animals.items():    
                     for time, cells in times.items():
@@ -279,7 +279,7 @@ def plot_averaged(grouped_by_treatment, time_list):
                 plt.plot(normalized,"b-", label=treatment)
                 plt.ylim(0,1.5)
                 
-            elif treatment == "cap_and_train":
+            elif treatment == "nocap_train":
                 to_stack = []
                 for animal, times in animals.items():    
                     for time, cells in times.items():
@@ -385,6 +385,7 @@ process_from_raw_traces(input_dir = "E:/glia projects/plasticity/data", output_d
 
 #access roi location to match based on position
 #for roi in iscell:
+    
 #    stat[roi]["med"]
 
     

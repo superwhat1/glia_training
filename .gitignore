@@ -8,3 +8,5 @@ analysis/
 *.png
 *.pkl
 *.tiff
+*.pdf
+*.abf
