@@ -11,9 +11,9 @@ import sys, subprocess
 try:
     import numpy as np
     import pandas as pd
-    import os, glob, statistics, csv, re
+    import os, csv, re
     from sklearn.metrics import auc
-    import matplotlib as plt
+    import matplotlib.pyplot as plt
     import pickle
     from datetime import date
     
@@ -65,7 +65,7 @@ def neuropil_deltaF(data, baselines):
     return deltaf
 
 
-def find_peaks_in_data(data, stim_times, animal):
+def find_peaks_in_data(data, stims, animal):
 
     peaks = []
     times = []
@@ -73,23 +73,32 @@ def find_peaks_in_data(data, stim_times, animal):
     threshold = []
     responses = []
     
-    first_stim = stim_times.at[animal, "first stim"]
+    first_stim = stims.at[animal, "stim 1"]
 
     for i in range(5):
         window = first_stim + i*915
-        if window - 175 < 0:
+        if window - 15 < 0:
             left = 0
-            right =window + 350 - first_stim
-        elif window + 175 > 4500:
-            left = window - 350 + (4500 - window)
-            right = 4500
+            right =window + 165 - first_stim
+        elif window + 150 > 4499:
+            left = window - 165 + (4499 - window)
+            right = 4499
         else:
-            left = window - 175
-            right = window + 175
+            left = window - 15
+            right = window + 150
             
         area.append(auc(list(range(left, right)), list(data[left:right])))
+         
+        if left == 0:
+            rolling_trgt = 15 - first_stim
+            responses.append(np.roll(np.array(data[left:right]), rolling_trgt))
+        
+        elif right == 4499:
+            rolling_trgt = 4499 - window - 15
+            responses.append(np.roll(np.array(data[left:right]), rolling_trgt))
             
-        responses.append(data[left:right])
+        else:
+            responses.append(data[left:right])
             
         peaks.append(max(data[left:right]))
 
@@ -165,19 +174,6 @@ def mean_stack(stacked):
     
     return  meaned
 
-'''
-def plot_averaged(meaned, title):
-    
-    plt.figure(figsize=(20,6))
-    position = 150
-    for i in meaned:
-        position+=1
-        plt.subplot(position)
-        plt.suptitle(title)
-        plt.ylim(0,1.5)
-        plt.plot(i)
-    plt.show()
-'''
 
 def group_by_treatment(resp_db, thresh_db):
     treatments = {"cap_and_train": ["21sep22", "22jun22", "26may22", "13aug22"], "cap_notrain": ["01apr23", "02feb23", "30mar23"],
@@ -208,17 +204,16 @@ def plot_averaged(grouped_by_treatment, time_list):
     base_min = {}
     base_max = {}
     ready_to_plot = {}
-    
     for i in time_list:
         ready_to_plot[i] = {}
         for treatment, animals in grouped_by_treatment.items():
             if treatment != "cap_notrain":
                 to_stack = []
                 for animal, times in animals.items():    
-                    for time, trace in times.items():    
+                    for time, trace in times.items():
                         if i in time:
                             to_stack.append(trace)
-                            
+                        
                 stacked = np.stack(to_stack)
                 meaned = mean_stack(stacked)
                 meaned_again = mean_stack(meaned)
@@ -228,11 +223,12 @@ def plot_averaged(grouped_by_treatment, time_list):
                     base_max[treatment] = meaned_again.max()
                     
                 normalized = (meaned_again - base_min[treatment])/ (base_max[treatment] - base_min[treatment])
-                title = treatment + i
-                plt.title(title)
-                plt.plot(normalized)
-                plt.ylim(0,1.1)
                 
+                title = i
+                plt.title(title)
+                plt.plot(normalized, label=treatment)
+                plt.ylim(0,1.1)
+        plt.legend(loc="best")
         plt.show()
         
         
@@ -246,11 +242,11 @@ def make_plots(grouped_by_treatment):
     
 def process_from_raw_traces():
     #Run data processing
-    input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\neuropil activity\\raw'
+    input_dir = 'C:/Users/BioCraze/Documents/Ruthazer lab/glia projects/plasticity/analysis/neuropil activity/raw/'
     files =[i.path for i in os.scandir(input_dir) if i.path.endswith('.csv')]
-    output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\neuropil activity\\"
+    output_dir = "C:/Users/BioCraze/Documents/Ruthazer lab/glia projects/plasticity/analysis/neuropil activity/"
     
-    stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia_training/summaries/stim_timings.csv"
+    stims_timings = "C:/Users/BioCraze/Documents/Ruthazer lab/glia projects/plasticity/summaries/stim_timings.csv"
     stims = pd.read_csv(stims_timings)
     stims = stims.set_index("file")
     
@@ -260,18 +256,18 @@ def process_from_raw_traces():
     for file in files:
         #perform deltaF operation
         raw_trace = read_in_neuropil_csv(file)
-        baselines = calculate_neuropil_baselines(raw_trace)
-        deltaf = neuropil_deltaF(raw_trace, baselines)
+        #baselines = calculate_neuropil_baselines(raw_trace)
+        #deltaf = neuropil_deltaF(raw_trace, baselines)
         
         #perform response metric operations
         recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group() #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
         
         try:
             print('working on ' + file)
-            area, peaks, times, thresholds, responses = find_peaks_in_data(deltaf, stims, recording_name)
+            area, peaks, times, thresholds, responses = find_peaks_in_data(raw_trace, stims, recording_name)
         
             #Save the data to files
-            output_neuropil_csv(baselines, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name)
+            #output_neuropil_csv(baselines, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name)
         
             #Agregate the responses and the thresholds then filter them and group them by experimental condition
             resp_db[recording_name] = np.array(responses)
