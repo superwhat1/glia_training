@@ -260,7 +260,7 @@ def process_from_raw_traces():
         #deltaf = neuropil_deltaF(raw_trace, baselines)
         
         #perform response metric operations
-        recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group() #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
+        recording_name = re.search("A\d{1}_min.+\d{2}\D{3}\d{2}", file).group() #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
         
         try:
             print('working on ' + file)
@@ -295,7 +295,7 @@ def process_from_responses():
     
     for file in response_files:
         #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
-        recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group()
+        recording_name = re.search("A\d{1}_min.+\d{2}\D{3}\d{2}", file).group()
         responses = np.load(file, allow_pickle=True)
         thresholds = pd.read_csv(file[:file.rfind('_')] + '_THRESHOLD.csv', header=None).iloc[0,:].to_list()
         

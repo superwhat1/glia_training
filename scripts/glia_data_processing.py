@@ -381,56 +381,53 @@ def make_plots(grouped_by_treatment):#Function for ploting aligned and averaged 
     
     plot_averaged(grouped_by_treatment, time_list)
     
-#def process_from_raw_traces(input_dir, output_dir):
+def process_from_raw_traces(input_dir, output_dir):
     
-input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia projects\\plasticity\\data\\'
-output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia projects\\plasticity\\analysis\\new glia activity\\"
+    files =[f.path[:f.path.rfind('\\')+1] for i in glob.glob(f'{input_dir}/*/**/***/',recursive=True) for f in os.scandir(i) if f.path.endswith('glia_iscell.npy') and "capapplication" not in f.path]
+    
+    resp_db = {}
+    thresh_db = {}
+    
+    for file in files:
+        #find the name of the recording that starts with an A and a number followed by _min and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
+        recording_name = re.search("A\d{1}_min.+\d{2}\D{3}\d{2}", file).group()
 
-files =[f.path[:f.path.rfind('\\')+1] for i in glob.glob(f'{input_dir}/*/**/***/',recursive=True) for f in os.scandir(i) if f.path.endswith('glia_iscell.npy') and "capapplication" not in f.path]
-
-resp_db = {}
-thresh_db = {}
-
-for file in files:
-    #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
-    recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group()
-    
-    #perform deltaF operation
-    #try:
-    print("Normalizing " + file)
-    raw_trace = is_cell_responsive(file, recording_name, output_dir)
-    baselines = calculate_baselines(raw_trace)
-    deltaf = deltaF(raw_trace, baselines)
-    #except Exception:
-     #   print(file + " contains no traces, so it was skipped!")
-      #  pass
-    
-    #perform response metric operations 
-    try:
-        print("Extracting response metrics of " + file)
-        blurred = blur(deltaf, sigma = 5)
+        #perform deltaF operation
+        #try:
+        print("Normalizing " + file)
+        raw_trace = is_cell_responsive(file, recording_name, output_dir)
+        baselines = calculate_baselines(raw_trace)
+        deltaf = deltaF(raw_trace, baselines)
+        #except Exception:
+         #   print(file + " contains no traces, so it was skipped!")
+          #  pass
         
-        area, peaks, times, thresholds, responses = find_peaks_in_data(deltaf, blurred, recording_name, threshold_multiplier = 2)
+        #perform response metric operations 
+        try:
+            print("Extracting response metrics of " + file)
+            blurred = blur(deltaf, sigma = 5)
+            
+            area, peaks, times, thresholds, responses = find_peaks_in_data(deltaf, blurred, recording_name, threshold_multiplier = 2)
+            
+            #Agregate the responses and the thresholds then filter them and group them by experimental condition
+            resp_db[recording_name] = responses
+            thresh_db[recording_name] = thresholds
+           
+            #Save the data to files
+            output_csv(baselines, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name)
+            
+        except KeyError:
+            print(file + " contains no responses, so it was skipped!")
+            pass
         
-        #Agregate the responses and the thresholds then filter them and group them by experimental condition
-        resp_db[recording_name] = responses
-        thresh_db[recording_name] = thresholds
-       
-        #Save the data to files
-        output_csv(baselines, deltaf, area, peaks, times, thresholds, responses, output_dir, recording_name)
+    grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
         
-    except KeyError:
-        print(file + " contains no responses, so it was skipped!")
-        pass
     
-grouped_by_treatment = group_by_treatment(resp_db, thresh_db)
-    
-
-#Write the grouped data to a txt file for use at another time
-with open(output_dir + 'grouped_glia_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
-    pickle.dump(grouped_by_treatment, of)
-    
+    #Write the grouped data to a txt file for use at another time
+    with open(output_dir + 'grouped_glia_responses_by_treatment' + str(date.today()) + '.pkl', 'wb') as of:
+        pickle.dump(grouped_by_treatment, of)
         
+            
 def process_from_responses(input_dir, output_dir):
 
     response_files =[f.path  for f in os.scandir(input_dir) if f.path.endswith('RESPONSES.npy')]  
@@ -439,7 +436,7 @@ def process_from_responses(input_dir, output_dir):
     
     for file in response_files:
         #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
-        recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group()
+        recording_name = re.search("A\d{1}_min.+\d{2}\D{3}\d{2}", file).group()
         responses = np.load(file, allow_pickle=True)
         thresholds = np.array(pd.read_csv(file[:file.rfind('_')] + '_THRESHOLD.csv', header=None).iloc[:, 1:])
         
@@ -454,7 +451,8 @@ def process_from_responses(input_dir, output_dir):
 
 #process_from_responses(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\new glia activity\\data-peaks\\',
 #                       output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\new glia activity\\")
-#process_from_raw_traces(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\data\\', 
-    #                    output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\new glia activity\\")
+process_from_raw_traces(input_dir = 'E:/glia projects/plasticity/data/', 
+                        output_dir = "C:/Users/BioCraze/Documents/Ruthazer lab/glia projects/plasticity/analysis/new glia activity/")
+
 
 

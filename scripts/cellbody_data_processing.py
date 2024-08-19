@@ -321,11 +321,10 @@ def process_from_raw_traces(input_dir, output_dir, stims_timings):
     
     resp_db = {}
     thresh_db = {}
-    print(files)
     for file in files:
         #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
-        recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group()
-        
+        recording_name = re.search("A\d{1}_min.+\d{2}\D{3}\d{2}", file).group()
+        print(recording_name)
         #perform deltaF operation
         try:
             print("Normalizing " + file)
@@ -367,7 +366,7 @@ def process_from_responses(input_dir, output_dir):
     
     for file in response_files:
         #find the name of the recording that starts with an A and ends with a date in the format of ddmmmyy with dd and yy as ints and mmm as string
-        recording_name = re.search("A.+\d{2}\D{3}\d{2}", file).group()
+        recording_name = re.search("A\d{1}_min.+\d{2}\D{3}\d{2}", file).group()
         responses = np.load(file, allow_pickle=True)
         thresholds = np.array(pd.read_csv(file[:file.rfind('_')] + '_THRESHOLD.csv', header=None).iloc[:, 1:])
         
