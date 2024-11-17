@@ -9,6 +9,8 @@ import seaborn as sns
 import pandas as pd
 import scypi.stats as stats
 
+
+#Figures for non-viral transfection project
 fig,axes =plt.subplots(nrows=2, ncols=3, figsize = (25,10), layout="constrained")
 palette = ["#95beff","#00bac6"]
 sns.set_palette(palette)
@@ -31,3 +33,5 @@ ax6=sns.barplot(x = "Transfection technique", y = "transfected cell count", data
 ax6.set_ylim(top=max(transfected_count["transfected cell count"])*1.2)
 sns.stripplot(x = "Transfection technique", y = "transfected cell count", data = transfected_count, color="k", size=5, legend=False, ax=ax6)
 plt.show()
+#------------------------------------------------------------------------------------------
+
