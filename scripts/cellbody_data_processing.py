@@ -31,10 +31,11 @@ def is_cell_responsive(file, recording_name, output_dir):
     #And to open F.npy containing an array of fluorescent trace arrays
     is_cell = np.load(file + 'tectal_neuron_iscell.npy', allow_pickle=True)
     F = np.load(file + 'F.npy',allow_pickle=True)
-
-    #create array of traces containing only the ROIs that are cells according to iscell 
+    
+    #create array of traces containing only the ROIs that are cells according to iscell
     F_fltrd = np.array([F[i] for i in range(len(is_cell)) if is_cell[i][0] == True])
-
+    fltrd_roi_idxs = [i for i in range(len(is_cell)) if is_cell[i][0] == True]
+    
     #write data to csv files
     np.savetxt(output_dir + recording_name +'_neuron_traces.csv', F_fltrd, delimiter=", ", fmt="% 1.4f")
     
@@ -51,7 +52,7 @@ def calculate_baselines(data, percentile=7.5):
 
     pre_window_size = 50
     post_window_size = 60
-    baselines = [[] for i in range(len(data[0:]))]
+    baselines = [[] for i in range(len(data))]
 
     for cell, frames in enumerate(data): # One cell at a time
     
