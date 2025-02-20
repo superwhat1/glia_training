@@ -327,14 +327,14 @@ def process_from_raw_traces(input_dir, output_dir, stims_timings):
         recording_name = re.search("A\d{1}_min.+\d{2}\D{3}\d{2}", file).group()
         print(recording_name)
         #perform deltaF operation
-        try:
-            print("Normalizing " + file)
-            raw_trace = is_cell_responsive(file, recording_name, output_dir)
-            baselines = calculate_baselines(raw_trace)
-            deltaf = deltaF(raw_trace, baselines)
-        except Exception:
-            print(file + " contains no traces, so it was skipped!")
-            pass
+        #try:
+        print("Normalizing " + file)
+        raw_trace = is_cell_responsive(file, recording_name, output_dir)
+        baselines = calculate_baselines(raw_trace)
+        deltaf = deltaF(raw_trace, baselines)
+        #except Exception:
+        #    print(file + " contains no traces, so it was skipped!")
+        #    pass
         
         #perform response metric operations 
         try:

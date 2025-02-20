@@ -41,6 +41,8 @@ plt.show()
 #------------------------------------------------------------------------------------------
 
 #Figures for glia plasticity
+#GLIA DATA
+    #no training
 fig,axes =plt.subplots(nrows=2, ncols=4, figsize = (25,10), layout="constrained")
 palette = ["#95beff","#00bac6"]
 sns.set_palette(palette)
@@ -64,12 +66,12 @@ glia_transients_count_ctrl = sns.pointplot(x = "time group", y = "normalized res
 glia_transients_count_ctrl.set_ylim(top=max(glia_transients_count_data["normalized response count"])*1.2, bottom=min(glia_transients_count_data["normalized response count"])*0.6)
 glia_transients_count_ctrl.set_title("Glia transients counts - no training")
 sns.stripplot(x = "time group", y = "normalized response count", data = glia_transients_count_data[glia_transients_count_data['treatment'].str.contains('without training')], size=5, hue="treatment", dodge=False, legend=False, ax=glia_transients_count_ctrl)
-
+	
+	#With training
 glia_transients_count_exp= sns.pointplot(x = "time group", y = "normalized response count", hue = "treatment", data=glia_transients_count_data[glia_transients_count_data['treatment'].str.contains('with training')], errorbar='se', capsize=0.2, ax=axes[1,1])
 glia_transients_count_exp.set_ylim(top=max(glia_transients_count_data["normalized response count"])*1.2, bottom=min(glia_transients_count_data["normalized response count"])*0.6)
 glia_transients_count_exp.set_title("Glia transients counts - training")
 sns.stripplot(x = "time group", y = "normalized response count", data = glia_transients_count_data[glia_transients_count_data['treatment'].str.contains('with training')], size=5, hue="treatment", dodge=False, legend=False, ax=glia_transients_count_exp)
-
 
 glia_transients_data= pd.read_csv("E:/glia projects/plasticity/summaries/glia_training_glia_summary_by_cell.csv").sort_values(by=['time group']).replace(to_replace='min99',value='min100')
 glia_transients_data=glia_transients_data.loc[~((glia_transients_data['time group']=='min30') | (pd.isna(glia_transients_data['time group'])))]
@@ -95,6 +97,42 @@ glia_transients_amp_exp.set_ylim(top=max(glia_transients_data["area"])*1.2, bott
 glia_transients_amp_exp.set_title("Glia auc - training")
 sns.stripplot(x = "time group", y = "area", data = glia_transients_data[glia_transients_data['treatment'].str.contains('with training')], size=5, hue="treatment", dodge=False, legend=False, ax=glia_transients_amp_exp)
 
+plt.show()
+
+
+#NEURON DATA
+    #No training
+fig,axes =plt.subplots(nrows=2, ncols=1, figsize = (10,10), layout="constrained")
+palette = ["#e51bec","#1be6ec"]
+sns.set_palette(palette)
+
+neuron_response_data= pd.read_csv("E:/glia projects/plasticity/summaries/glia_training_neuron_summary_by_cell.csv").sort_values(by=['time group']).replace(to_replace='min99',value='min100')
+neuron_response_data=neuron_response_data.loc[~((neuron_response_data['time group']=='min30') | (pd.isna(neuron_response_data['time group'])))]
+neuron_response_amp_ctrl = sns.pointplot(x = "time group", y = "peaks", hue = "treatment", data=neuron_response_data[neuron_response_data['treatment'].str.contains('without training')], errorbar='se', capsize=0.2, ax=axes[0])
+neuron_response_amp_ctrl.set_ylim(top=max(neuron_response_data["peaks"])*1.2, bottom=min(neuron_response_data["peaks"])*0.6)
+neuron_response_amp_ctrl.set_title("Neuron peak amplitude - no training")
+sns.stripplot(x = "time group", y = "peaks", data = neuron_response_data[neuron_response_data['treatment'].str.contains('without training')], size=5, hue="treatment", dodge=False, legend=False, ax=neuron_response_amp_ctrl)
+
+neuron_response_auc_ctrl = sns.pointplot(x = "time group", y = "area", hue = "treatment", data=neuron_response_data[neuron_response_data['treatment'].str.contains('without training')], errorbar='se', capsize=0.2, ax=axes[1])
+neuron_response_auc_ctrl.set_ylim(top=max(neuron_response_data["area"])*1.2, bottom=min(neuron_response_data["area"])*0.6)
+neuron_response_auc_ctrl.set_title("Neuron auc - no training")
+sns.stripplot(x = "time group", y = "area", data = neuron_response_data[neuron_response_data['treatment'].str.contains('without training')], size=5, hue="treatment", dodge=False, legend=False, ax=neuron_response_auc_ctrl)
+plt.show()
+    
+    #With training
+fig,axes =plt.subplots(nrows=2, ncols=1, figsize = (10,10), layout="constrained")
+palette = ["#e51bec","#1be6ec"]
+sns.set_palette(palette)
+
+neuron_response_amp_exp= sns.pointplot(x = "time group", y = "peaks", hue = "treatment", data=neuron_response_data[neuron_response_data['treatment'].str.contains('with training')], errorbar='se', capsize=0.2, ax=axes[0])
+neuron_response_amp_exp.set_ylim(top=max(neuron_response_data["peaks"])*1.2, bottom=min(neuron_response_data["peaks"])-min(neuron_response_data["peaks"])*1.2)
+neuron_response_amp_exp.set_title("Neuron peak amplitude - training")
+sns.stripplot(x = "time group", y = "peaks", data = neuron_response_data[neuron_response_data['treatment'].str.contains('with training')], size=5, hue="treatment", dodge=False, legend=False, ax=neuron_response_amp_exp)
+
+neuron_response_auc_exp= sns.pointplot(x = "time group", y = "area", hue = "treatment", data=neuron_response_data[neuron_response_data['treatment'].str.contains('with training')], errorbar='se', capsize=0.2, ax=axes[1])
+neuron_response_auc_exp.set_ylim(top=max(neuron_response_data["area"])*1.2, bottom=min(neuron_response_data["area"])-min(neuron_response_data["area"])*1.2)
+neuron_response_auc_exp.set_title("Neuron auc - training")
+sns.stripplot(x = "time group", y = "area", data = neuron_response_data[neuron_response_data['treatment'].str.contains('with training')], size=5, hue="treatment", dodge=False, legend=False, ax=neuron_response_auc_exp)
 plt.show()
 
 

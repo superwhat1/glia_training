@@ -452,7 +452,7 @@ def process_from_responses(input_dir, output_dir):
 #process_from_responses(input_dir = 'C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\new glia activity\\data-peaks\\',
 #                       output_dir = "C:\\Users\\Biocraze\\Documents\\Ruthazer lab\\glia_training\\analysis\\new glia activity\\")
 process_from_raw_traces(input_dir = 'E:/glia projects/plasticity/data/', 
-                        output_dir = "C:/Users/BioCraze/Documents/Ruthazer lab/glia projects/plasticity/analysis/new glia activity/")
+                        output_dir = "E:/glia projects/plasticity/analysis/new glia activity/")
 
 
 
