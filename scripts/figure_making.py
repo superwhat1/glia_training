@@ -11,6 +11,10 @@ import scypi.stats as stats
 
 
 #Figures for non-viral transfection project
+
+gcamp_summary = 
+transfected_count = 
+
 fig,axes =plt.subplots(nrows=2, ncols=3, figsize = (25,10), layout="constrained")
 palette = ["#95beff","#00bac6"]
 sns.set_palette(palette)
@@ -90,6 +94,29 @@ glia_transients_amp_exp= sns.pointplot(x = "time group", y = "area", hue = "trea
 glia_transients_amp_exp.set_ylim(top=max(glia_transients_data["area"])*1.2, bottom=min(glia_transients_data["area"])-min(glia_transients_data["area"])*1.2)
 glia_transients_amp_exp.set_title("Glia auc - training")
 sns.stripplot(x = "time group", y = "area", data = glia_transients_data[glia_transients_data['treatment'].str.contains('with training')], size=5, hue="treatment", dodge=False, legend=False, ax=glia_transients_amp_exp)
+
+plt.show()
+
+
+
+#CELL LOCATION MATCHING
+fig,ax =plt.subplots(figsize = (25,25), layout="constrained")
+ax = sns.heatmap(fltrd_dst_matrix, vmin=np.min(fltrd_dst_matrix), vmax=np.min(fltrd_dst_matrix)*100 ,center=np.min(fltrd_dst_matrix)*10, cbar=False)
+ax.set_ylabel("cell id in current time point")
+ax.set_xlabel("cell id in next time point")
+ax.set_title("Matching cells")
+
+#FIELD POTENTIAL GRAPHS
+NBQX_APV = pd.read_csv("E:/glia projects/field recordings/field_potential_data.csv")
+
+fig,ax =plt.subplots(figsize = (25,10), layout="constrained")
+palette = ["#95beff","#00bac6"]
+sns.set_palette(palette)
+
+ax = sns.pointplot(x = "series time", y = "Normalized amp", hue = "treatment", data=NBQX_APV, errorbar='se', capsize=0.2, ax=ax)
+ax.set_ylim(top=max(NBQX_APV["Normalized amp"])*1.2, bottom=min(NBQX_APV["Normalized amp"])-min(NBQX_APV["Normalized amp"])*1.2)
+ax.set_title("Field recordings")
+sns.stripplot(x = "series time", y = "Normalized amp", data = NBQX_APV, size=5, hue="treatment", dodge=False, legend=False, ax=ax)
 
 plt.show()
 
