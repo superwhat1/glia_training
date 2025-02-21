@@ -258,7 +258,7 @@ def plot_averaged(grouped_by_treatment, time_list):
     for i in time_list:
         ready_to_plot[i] = {}
         for treatment, animals in grouped_by_treatment.items():
-            if treatment =="nocap_notrain":
+            if treatment =="nocap_train":
                 to_stack = []
                 for animal, times in animals.items():    
                     for time, cells in times.items():
@@ -277,10 +277,10 @@ def plot_averaged(grouped_by_treatment, time_list):
                 ready_to_plot[i][treatment]=normalized
                 
                 plt.title(i)
-                plt.plot(normalized,"b-", label=treatment)
+                plt.plot(normalized[150:],"cyan", label=treatment)
                 plt.ylim(0,1.5)
                 
-            elif treatment == "nocap_train":
+            elif treatment == "cap_and_train":
                 to_stack = []
                 for animal, times in animals.items():    
                     for time, cells in times.items():
@@ -299,9 +299,9 @@ def plot_averaged(grouped_by_treatment, time_list):
                 ready_to_plot[i][treatment]=normalized
                 
                 plt.title(i)
-                plt.plot(normalized,"r-", label=treatment)
+                plt.plot(normalized[150:],"magenta", label=treatment)
                 plt.ylim(0,1.5)
-        plt.legend(loc="best")
+        #plt.legend(loc="best")
         
         plt.show()
 
