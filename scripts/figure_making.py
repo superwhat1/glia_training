@@ -14,8 +14,8 @@ from statistics import mean, stdev
 
 #Figures for non-viral transfection project
 
-gcamp_summary = 
-transfected_count = 
+#gcamp_summary = 
+#transfected_count = 
 
 fig,axes =plt.subplots(nrows=2, ncols=3, figsize = (25,10), layout="constrained")
 palette = ["#95beff","#00bac6"]
@@ -51,7 +51,7 @@ mpl.rcParams["axes.edgecolor"]=colour
 mpl.rcParams["figure.edgecolor"]=colour
 mpl.rcParams["figure.facecolor"]='k'
 mpl.rcParams["font.size"]=15
-palette = ["#e51bec","#1be6ec"]
+palette = ["#1be6ec", "#e51bec"]
 
 #Figures for glia plasticity
 #GLIA DATA
@@ -199,7 +199,7 @@ sns.stripplot(x = "time group", y = "Normalized au peaks", data = neuropil_raw_a
         #delta f
 neuropil_norm_anml_training = neuropil_data_norm_by_anml[neuropil_data_norm_by_anml['treatment'].str.contains('with training')]
 fig,axes =plt.subplots(nrows=1, ncols=1, figsize = (20,10), layout="constrained")
-neuropil_response_auc_exp= sns.pointplot(x = "time group", y = "corrected area", hue = "treatment", data=neuropil_norm_anml_training, errorbar='se', capsize=0.1, err_kws={'color':'white','linewidth':2}, ax=axes)
+neuropil_response_auc_exp= sns.pointplot(x = "time group", y = "corrected area", hue = "treatment", data=neuropil_norm_anml_training, errorbar='se', capsize=0.1, ax=axes)
 #neuron_response_auc_exp.set_ylim(top=1.5, bottom=0.5)
 neuropil_response_auc_exp.set_title("Neuropil auc - with training")
 neuropil_response_auc_exp.set_ylabel("Response AUC (F/F0)")
@@ -209,7 +209,7 @@ sns.stripplot(x = "time group", y = "corrected area", data = neuropil_norm_anml_
         #raw
 neuropil_raw_anml_exp = neuropil_data_raw_by_anml[neuropil_data_raw_by_anml['treatment'].str.contains('with training')]
 fig,axes =plt.subplots(nrows=1, ncols=1, figsize = (20,10), layout="constrained")
-neuropil_raw_amp_exp= sns.pointplot(x = "time group", y = "Normalized au peaks", hue = "treatment", data=neuropil_raw_anml_exp, errorbar='se', capsize=0.1, err_kws={'color':'white','linewidth':2}, ax=axes)
+neuropil_raw_amp_exp= sns.pointplot(x = "time group", y = "Normalized au peaks", hue = "treatment", data=neuropil_raw_anml_exp, errorbar='se', capsize=0.1, ax=axes)
 #neuron_response_auc_exp.set_ylim(top=1.5, bottom=0.5)
 neuropil_raw_amp_exp.set_title("Neuropil amplitude - with training")
 neuropil_raw_amp_exp.set_ylabel("Response amplitude (a.u.)")

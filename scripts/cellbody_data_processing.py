@@ -258,7 +258,7 @@ def plot_averaged(grouped_by_treatment, time_list):
     for i in time_list:
         ready_to_plot[i] = {}
         for treatment, animals in grouped_by_treatment.items():
-            if treatment =="nocap_train":
+            if treatment =="nocap_notrain":
                 to_stack = []
                 for animal, times in animals.items():    
                     for time, cells in times.items():
@@ -268,19 +268,19 @@ def plot_averaged(grouped_by_treatment, time_list):
                                 
                 stacked = np.stack(to_stack)
                 meaned = mean_stack(stacked)
-                meaned_again = mean_stack(meaned)
+                #meaned_again = mean_stack(meaned)
                 
                 if i == 'min15':
-                    base_min[treatment] = meaned_again.min()
-                    base_max[treatment] = meaned_again.max()
-                normalized = (meaned_again - base_min[treatment])/ (base_max[treatment] - base_min[treatment])
+                    base_min[treatment] = meaned.min()
+                    base_max[treatment] = meaned.max()
+                normalized = (meaned - base_min[treatment])/ (base_max[treatment] - base_min[treatment])
                 ready_to_plot[i][treatment]=normalized
                 
                 plt.title(i)
-                plt.plot(normalized[150:],"cyan", label=treatment)
-                plt.ylim(0,1.5)
+                plt.plot(normalized[:],"cyan", label=treatment)
+                plt.ylim(-0.1,1.5)
                 
-            elif treatment == "cap_and_train":
+            elif treatment == "cap_notrain":
                 to_stack = []
                 for animal, times in animals.items():    
                     for time, cells in times.items():
@@ -290,17 +290,17 @@ def plot_averaged(grouped_by_treatment, time_list):
                                 
                 stacked = np.stack(to_stack)
                 meaned = mean_stack(stacked)
-                meaned_again = mean_stack(meaned)
+                #meaned_again = mean_stack(meaned)
                 
                 if i == 'min15':
-                    base_min[treatment] = meaned_again.min()
-                    base_max[treatment] = meaned_again.max()
-                normalized = (meaned_again - base_min[treatment])/ (base_max[treatment] - base_min[treatment])
+                    base_min[treatment] = meaned.min()
+                    base_max[treatment] = meaned.max()
+                normalized = (meaned - base_min[treatment])/ (base_max[treatment] - base_min[treatment])
                 ready_to_plot[i][treatment]=normalized
                 
                 plt.title(i)
-                plt.plot(normalized[150:],"magenta", label=treatment)
-                plt.ylim(0,1.5)
+                plt.plot(normalized[:],"magenta", label=treatment)
+                plt.ylim(-0.1,1.5)
         #plt.legend(loc="best")
         
         plt.show()
