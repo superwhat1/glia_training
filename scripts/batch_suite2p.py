@@ -10,8 +10,8 @@ import numpy as np
 import glob
 from suite2p import run_s2p
 
-ops = np.load('C:/Users/BioCraze/Documents/Ruthazer lab/glia projects/anatomical_mean_roi_detection_ops.npy', allow_pickle=True).item()
-rootdir = 'E:/glia projects/plasticity/data/'
+ops = np.load('E:/glia projects/anatomical_mean_roi_detection_ops.npy', allow_pickle=True).item()
+rootdir = 'E:/glia projects/plasticity/data/training_A2_27apr22/'
 
 files = [f.path[:f.path.rfind('\\')+1] for i in glob.glob(f'{rootdir}/**/',recursive=True) for f in os.scandir(i) if f.path.endswith('.tif') and 'min' in  f.path]
 for file in files:
